@@ -6,8 +6,8 @@
 #include <chrono>
 #include <pthread.h>
 #include <condition_variable>
-#include<mutex>
-#include<semaphore>
+#include <mutex>
+#include <semaphore>
 
 //sensores e atuadores disponíveis no caminhão:
 bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
