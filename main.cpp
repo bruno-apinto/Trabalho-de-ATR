@@ -120,8 +120,6 @@ int main (){
         
         comando_navegacao ();
 
-
-
    }
 
     return 0;
