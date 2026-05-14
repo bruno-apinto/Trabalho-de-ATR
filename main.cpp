@@ -8,7 +8,10 @@
 #include <condition_variable>
 #include <mutex>
 #include <semaphore>
+#include <boost/asio.hpp>
 
+
+#define ELEMENTOS_BUFFERS 10
 //sensores e atuadores disponíveis no caminhão:
 bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
 int i_lidar; //Resposta do sensor LIDAR do veículo exibindo a distância no eixo y, com relação à altura do robô 
@@ -41,11 +44,25 @@ std::condition_variable camera;
 */
 std::mutex m;
 
+//INICIALIZAÇÃO DE BUFFERS
 
+std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS);
+
+/**
+ * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
+ *  e liga/desliga para o controle de navegação. O comando de navegação que deve implementar a lógica de manual/ 
+ * automático. Exerce a função de ESCRITOR sobre o BUFFER_NAVEGACAO
+ * 
+ */
 void comando_navegacao(){
 
 }
 
+/**
+ * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)
+ *  a partir de um setpoint de velocidade recebido pelo Comando de Navegação. Exerce a função de LEITOR do BUFFER _NAVEGACAO
+ * 
+ */
 void controle_navegacao(){
 
 }
@@ -89,4 +106,11 @@ void operacao_remota(){
 
 void simulacao(){
 
+}
+
+
+int main (){
+
+
+    return 0;
 }
