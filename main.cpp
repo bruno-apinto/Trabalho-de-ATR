@@ -42,7 +42,6 @@ c_para - Comando para parar o robô.
 std::condition_variable devagar;
 std::condition_variable camera; 
 */
-std::mutex m;
 
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
@@ -63,11 +62,11 @@ void controle_navegacao(){
 
 }
 
-void distancia_percorrida(){
+void distancia_percorrida(std::mutex mtx, std::vector<float> BUFFER){
 
 }
 
-void reconstrucao_teto(){
+void reconstrucao_teto(std::mutex mtx, std::vector<float> BUFFER){
 
     /* USAR SIGNAL AO INVES DE SEMAFORO
     devagar.notify_all(); //avisa o robô que uma falha foi detectada
@@ -77,21 +76,14 @@ void reconstrucao_teto(){
 
 void inspecao_camera(){
 
-    std::unique_lock<std::mutex> lock(m); // Protocolo de entrada
-    /* USAR SIGNAL AO INVES DE SEMAFORO
-    while(!(e_inspecao)){
-        camera.wait(lock); // Espera até que uma falha seja detectada
-    }
-    */
-    lock.unlock(); // Protocolo de saída
 }
 
-void coletor_dados(){
+void coletor_dados(std::mutex mtx, std::vector<float> BUFFER){
 
 }
 
-void operacao_remota(){
-    std::unique_lock<std::mutex> lock(m); // Protocolo de entrada
+void operacao_remota(std::mutex mtx, std::vector<float> BUFFER){
+    std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
     /* USAR SIGNAL AO INVES DE SEMAFORO
     while(!(e_inspecao)){
         devagar.wait(lock); // Espera até que uma falha seja detectada
@@ -132,11 +124,14 @@ int main (){
 
         //INICIALIZAÇÃO AS THREADS
 
+        std::mutex mutex_navegacao;
+        std::mutex mutex_nivel;
+
         std::vector <std::thread> threads_navegacao;
-        threads_navegacao.emplace_back(distancia_percorrida);
+        threads_navegacao.emplace_back(distancia_percorrida, mutex_navegacao, BUFFER_NAVEGACAO);
         threads_navegacao.emplace_back(inspecao_camera);
-        threads_navegacao.emplace_back(coletor_dados);
-        threads_navegacao.emplace_back(reconstrucao_teto);
+        threads_navegacao.emplace_back(coletor_dados, mutex_nivel, BUFFER_NIVEL);
+        threads_navegacao.emplace_back(reconstrucao_teto, mutex_nivel, BUFFER_NIVEL);
 
    }
 
