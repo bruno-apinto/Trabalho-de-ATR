@@ -10,8 +10,8 @@
 #include <semaphore>
 #include <boost/asio.hpp>
 
-
 #define ELEMENTOS_BUFFERS 10
+
 //sensores e atuadores disponíveis no caminhão:
 bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
 int i_lidar; //Resposta do sensor LIDAR do veículo exibindo a distância no eixo y, com relação à altura do robô 
@@ -43,10 +43,6 @@ std::condition_variable devagar;
 std::condition_variable camera; 
 */
 std::mutex m;
-
-//INICIALIZAÇÃO DE BUFFERS
-
-std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS);
 
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
@@ -110,6 +106,42 @@ void simulacao(){
 
 
 int main (){
+
+
+    //INICIALIZAÇÃO DE BUFFERS
+    std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
+    std::vector <float> BUFFER_NIVEL (ELEMENTOS_BUFFERS); //leitura de nivel
+
+    pid_t pid;
+
+    pid = fork();
+
+   if (pid == 0){
+        controle_navegacao ();
+   }
+
+   else if (pid < 0){
+        perror ("Erro ao criar processo\n");
+   }
+
+   else {
+        comando_navegacao ();
+
+        fork ();
+
+        if (pid == 0){
+
+            //INICIALIZA AS THREADS
+
+            std::vector <std::thread> threads_navegacao;
+            threads_navegacao.emplace_back(distancia_percorrida);
+            threads_navegacao.emplace_back(inspecao_camera);
+            threads_navegacao.emplace_back(coletor_dados);
+            threads_navegacao.emplace_back(reconstrucao_teto);
+
+        }
+   }
+
 
 
     return 0;
