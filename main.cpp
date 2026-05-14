@@ -107,10 +107,7 @@ void simulacao(){
 
 int main (){
 
-
-    //INICIALIZAÇÃO DE BUFFERS
-    std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
-    std::vector <float> BUFFER_NIVEL (ELEMENTOS_BUFFERS); //leitura de nivel
+    //INICIALIZAÇÃO PROCESSOS
 
     pid_t pid;
 
@@ -122,27 +119,26 @@ int main (){
 
    else if (pid < 0){
         perror ("Erro ao criar processo\n");
+        exit(1);
    }
 
    else {
+
         comando_navegacao ();
 
-        fork ();
+         //INICIALIZAÇÃO DE BUFFERS
+        std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
+        std::vector <float> BUFFER_NIVEL (ELEMENTOS_BUFFERS); //leitura de nivel
 
-        if (pid == 0){
+        //INICIALIZAÇÃO AS THREADS
 
-            //INICIALIZA AS THREADS
+        std::vector <std::thread> threads_navegacao;
+        threads_navegacao.emplace_back(distancia_percorrida);
+        threads_navegacao.emplace_back(inspecao_camera);
+        threads_navegacao.emplace_back(coletor_dados);
+        threads_navegacao.emplace_back(reconstrucao_teto);
 
-            std::vector <std::thread> threads_navegacao;
-            threads_navegacao.emplace_back(distancia_percorrida);
-            threads_navegacao.emplace_back(inspecao_camera);
-            threads_navegacao.emplace_back(coletor_dados);
-            threads_navegacao.emplace_back(reconstrucao_teto);
-
-        }
    }
-
-
 
     return 0;
 }
