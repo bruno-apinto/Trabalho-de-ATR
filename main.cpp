@@ -42,21 +42,21 @@ void comando_navegacao(){
  *  a partir de um setpoint de velocidade recebido pelo Comando de Navegação. Exerce a função de LEITOR do BUFFER _NAVEGACAO
  * 
  */
-void controle_navegacao(std::mutex mtx, std::vector <float> BUFFER){
+void controle_navegacao(std::mutex &mtx, std::vector <float> *BUFFER){
 
     std::unique_lock<std::mutex> lock (mtx);
     lock.unlock();
 
 }
 
-void distancia_percorrida(std::mutex mtx, std::vector<float> BUFFER){
+void distancia_percorrida(std::mutex mtx, std::vector<float> *BUFFER){
 
     std::unique_lock<std::mutex> lock (mtx);
     lock.unlock();
 
 }
 
-void reconstrucao_teto(std::mutex mtx, std::vector<float> BUFFER){
+void reconstrucao_teto(std::mutex mtx, std::vector<float> *BUFFER){
 
     std::unique_lock<std::mutex> lock (mtx);
     lock.unlock();
@@ -66,14 +66,14 @@ void inspecao_camera(){
 
 }
 
-void coletor_dados(std::mutex mtx, std::vector<float> BUFFER){
+void coletor_dados(std::mutex mtx, std::vector<float> *BUFFER){
 
     std::unique_lock<std::mutex> lock (mtx);
 
     lock.unlock();
 }
 
-void operacao_remota(std::mutex mtx, std::vector<float> BUFFER){
+void operacao_remota(std::mutex mtx, std::vector<float> *BUFFER){
     std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
     lock.unlock(); // Protocolo de saída
 }
@@ -112,12 +112,12 @@ int main (){
         std::mutex mutex_nivel;
 
         std::vector <std::thread> threads_navegacao;
-        threads_navegacao.emplace_back(distancia_percorrida, mutex_navegacao, BUFFER_NAVEGACAO);
+        threads_navegacao.emplace_back(distancia_percorrida, std::ref (mutex_navegacao), &BUFFER_NAVEGACAO);
         threads_navegacao.emplace_back(inspecao_camera);
-        threads_navegacao.emplace_back(coletor_dados, mutex_nivel, BUFFER_NIVEL);
-        threads_navegacao.emplace_back(reconstrucao_teto, mutex_nivel, BUFFER_NIVEL);
+        threads_navegacao.emplace_back(coletor_dados, std::ref (mutex_nivel), &BUFFER_NIVEL);
+        threads_navegacao.emplace_back(reconstrucao_teto, std::ref (mutex_nivel), &BUFFER_NIVEL);
         
-        controle_navegacao(mutex_navegacao, BUFFER_NAVEGACAO);
+        controle_navegacao(std::ref (mutex_navegacao), &BUFFER_NAVEGACAO);
    }
 
     return 0;
