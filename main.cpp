@@ -9,8 +9,27 @@
 #include <semaphore>
 #include <boost/asio.hpp>
 #include <random>
+#include <iomanip>
 
 #define ELEMENTOS_BUFFERS 10
+
+std::mutex mutex_log;
+
+void log_message(const std::string& thread,
+                 const std::string& mensagem){
+
+    std::lock_guard<std::mutex> lock(mutex_log);
+
+    auto agora = std::chrono::system_clock::now();
+
+    auto tempo = std::chrono::system_clock::to_time_t(agora);
+
+    std::cout
+        << "[" << std::put_time(std::localtime(&tempo), "%H:%M:%S") << "] "
+        << "[" << thread << "] "
+        << mensagem
+        << std::endl;
+}
 
 float numero_aleatorio_debugg(){
 
@@ -74,10 +93,20 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
 
         while(dados_navegacao == 0){
+
+            log_message(
+                "CONTROLE",
+                "Buffer vazio -> aguardando dados"
+            );
+
             leitura_buffer_navegacao.wait(lock);
         }
+
         //SEÇÃO CRÍTICA
-        std::cout << "Posição lida (navegação): " << BUFFER[idx] << std::endl;
+        log_message(
+            "CONTROLE",
+            "Posição lida (navegação): " + std::to_string(BUFFER[idx])
+        );
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -110,12 +139,22 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
         
         while(dados_navegacao >=10){
+
+            log_message(
+                "DISTANCIA",
+                "Buffer cheio -> aguardando espaço"
+            );
+
             escrita_buffer_navegacao.wait(lock);
         }
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
-        std::cout << "Posição escrita (navegação): " << escrita << std::endl; //para debbug
+
+        log_message(
+            "DISTANCIA",
+            "Posição escrita (navegação): " + std::to_string(escrita)
+        );
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -215,6 +254,11 @@ void simulacao(){
 
 int main (){
 
+    log_message(
+        "MAIN",
+        "Inicializando sistema"
+    );
+
     //INICIALIZAÇÃO PROCESSOS
 
     pid_t pid;
@@ -222,6 +266,12 @@ int main (){
     pid = fork();
 
    if (pid == 0){
+
+        log_message(
+            "PROCESSO",
+            "Processo comando_navegacao criado"
+        );
+
         comando_navegacao ();
    }
 
@@ -236,15 +286,44 @@ int main (){
         std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
         std::vector <float> BUFFER_NIVEL (ELEMENTOS_BUFFERS); //leitura de nivel
 
+        log_message(
+            "MAIN",
+            "Buffers inicializados"
+        );
+
         //INICIALIZAÇÃO AS THREADS
 
         std::mutex mutex_navegacao;
         std::mutex mutex_nivel;
 
         std::vector <std::thread> threads_navegacao;
+
+        log_message(
+            "MAIN",
+            "Criando thread distancia_percorrida"
+        );
+
         threads_navegacao.emplace_back(distancia_percorrida, std::ref (mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+
+        log_message(
+            "MAIN",
+            "Criando thread inspecao_camera"
+        );
+
         threads_navegacao.emplace_back(inspecao_camera);
+
+        log_message(
+            "MAIN",
+            "Criando thread coletor_dados"
+        );
+
         threads_navegacao.emplace_back(coletor_dados, std::ref (mutex_nivel), std::ref(BUFFER_NIVEL));
+
+        log_message(
+            "MAIN",
+            "Criando thread reconstrucao_teto"
+        );
+
         threads_navegacao.emplace_back(reconstrucao_teto, std::ref (mutex_nivel), std::ref(BUFFER_NIVEL));
 
         controle_navegacao(std::ref (mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
