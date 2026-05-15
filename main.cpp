@@ -38,8 +38,12 @@ int j_sp_velocidade; //Setpoint de velocidade do robô para o controlador de vel
 
 //variaveis de condição buffers
 std::condition_variable leitura_buffer_navegacao;
-int dados_fila = 0;
+int dados_navegacao = 0;
 std::condition_variable escrita_buffer_navegacao;
+
+std::condition_variable leitura_buffer_nivel;
+int dados_nivel = 0;
+std::condition_variable escrita_buffer_nivel;
 
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
@@ -55,24 +59,29 @@ void comando_navegacao(){
  * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)
  *  a partir de um setpoint de velocidade recebido pelo Comando de Navegação. Exerce a função de LEITOR do BUFFER _NAVEGACAO
  * 
+ * @param mtx mutex utilizado
+ * @param BUFFER historico de posições
  */
 void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
-    for (int i = 0; i < 13; i++){
+    while (true){
         
         idx++;
         idx = idx%ELEMENTOS_BUFFERS;
         
         std::unique_lock<std::mutex> lock (mtx);
 
-        while(dados_fila == 0){
+        while(dados_navegacao == 0){
             leitura_buffer_navegacao.wait(lock);
         }
+        //SEÇÃO CRÍTICA
         std::cout << "Posição lida: " << BUFFER[idx] << std::endl;
+        //SEÇÃO CRÍTICA
+
         lock.unlock();
-        dados_fila--;
+        dados_navegacao--;
         escrita_buffer_navegacao.notify_one();
 
         //std::this_thread::sleep_for (std::chrono::microseconds(50));
@@ -81,25 +90,38 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
+/**
+ * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER_NAVEGACAO.
+ * 
+ * @param mtx mutex utilizado na variavel compartilhada
+ * @param BUFFER historico de posições
+ */
 void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
 
-int idx = -1; // -1 para corrigir o inicio de escrita
+    int idx = -1; // -1 para corrigir o inicio de escrita
     
-    for (int i = 0; i < 13; i++){
+    while (true){
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
+
+        float escrita = numero_aleatorio_debugg();
     
         std::unique_lock<std::mutex> lock (mtx);
         
-        while(dados_fila >=10){
+        while(dados_navegacao >=10){
             escrita_buffer_navegacao.wait(lock);
         }
-        BUFFER[idx] = i;
-        std::cout << "Posição escrita: " << i << std::endl;
+
+        //SEÇÃO CRÍTICA
+        BUFFER[idx] = escrita;
+        std::cout << "Posição escrita: " << escrita << std::endl; //para debbug
+        //SEÇÃO CRÍTICA
+
         lock.unlock();
 
-        dados_fila++;
+        dados_navegacao++;
+
         leitura_buffer_navegacao.notify_one();
 
     }
