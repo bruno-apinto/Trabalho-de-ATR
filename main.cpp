@@ -1,5 +1,6 @@
 #include "includes.hpp"
 #include "shared_memory.hpp"
+#include "simulacao.cpp"
 
 #define ELEMENTOS_BUFFERS 10
 const int SHM_SIZE = 1024; // Size of the shared memory segment
@@ -204,17 +205,9 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
         lock.unlock();
 }
 
-void operacao_remota(std::mutex& mtx, std::vector<float>& BUFFER){
-    std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
-    lock.unlock(); // Protocolo de saída
-}
-
-void simulacao(){
-
-}
-
-
 int main (){
+
+    simulacao();
 
     // Generate a unique key for the shared memory segment 
     key_t key = IPC_PRIVATE; // Use IPC_PRIVATE for a unique key 
