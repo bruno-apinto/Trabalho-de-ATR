@@ -92,7 +92,7 @@ int main (){
     pid = fork();
 
    if (pid == 0){
-        controle_navegacao ();
+        comando_navegacao ();
    }
 
    else if (pid < 0){
@@ -117,9 +117,7 @@ int main (){
         threads_navegacao.emplace_back(coletor_dados, mutex_nivel, BUFFER_NIVEL);
         threads_navegacao.emplace_back(reconstrucao_teto, mutex_nivel, BUFFER_NIVEL);
         
-        
-        comando_navegacao ();
-
+        controle_navegacao(mutex_navegacao, BUFFER_NAVEGACAO);
    }
 
     return 0;
