@@ -75,6 +75,8 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
         dados_fila--;
         escrita_buffer_navegacao.notify_one();
 
+        //std::this_thread::sleep_for (std::chrono::microseconds(50));
+
     }
 
 }
@@ -82,7 +84,9 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
 
 int idx = -1; // -1 para corrigir o inicio de escrita
+    
     for (int i = 0; i < 13; i++){
+        
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
     
@@ -92,12 +96,12 @@ int idx = -1; // -1 para corrigir o inicio de escrita
             escrita_buffer_navegacao.wait(lock);
         }
         BUFFER[idx] = i;
+        std::cout << "Posição escrita: " << i << std::endl;
         lock.unlock();
 
         dados_fila++;
         leitura_buffer_navegacao.notify_one();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Ajustado tempo para testes rápidos
     }
 }
 
