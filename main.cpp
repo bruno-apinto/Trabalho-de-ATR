@@ -96,7 +96,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
             log_message(
                 "CONTROLE",
-                "Buffer vazio -> aguardando dados"
+                "TESTE: buffer vazio -> consumidor bloqueado aguardando dados"
             );
 
             leitura_buffer_navegacao.wait(lock);
@@ -109,11 +109,17 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
         );
         //SEÇÃO CRÍTICA
 
-        lock.unlock();
-        dados_navegacao--;
-        escrita_buffer_navegacao.notify_one();
+        // TESTE DE BUFFER CHEIO
+        // Consumidor lento para encher o buffer
+        std::this_thread::sleep_for(
+            std::chrono::seconds(2)
+        );
 
-        //std::this_thread::sleep_for (std::chrono::microseconds(50));
+        lock.unlock();
+
+        dados_navegacao--;
+
+        escrita_buffer_navegacao.notify_one();
 
     }
 
@@ -134,6 +140,13 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
 
+        // TESTE DE BUFFER VAZIO
+        // Produtor lento no início
+
+        std::this_thread::sleep_for(
+            std::chrono::seconds(1)
+        );
+
         float escrita = numero_aleatorio_debugg();
     
         std::unique_lock<std::mutex> lock (mtx);
@@ -142,7 +155,7 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
 
             log_message(
                 "DISTANCIA",
-                "Buffer cheio -> aguardando espaço"
+                "TESTE: buffer cheio -> produtor bloqueado aguardando espaço"
             );
 
             escrita_buffer_navegacao.wait(lock);
@@ -155,6 +168,13 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
             "DISTANCIA",
             "Posição escrita (navegação): " + std::to_string(escrita)
         );
+
+        log_message(
+            "DISTANCIA",
+            "Quantidade de dados no buffer: "
+            + std::to_string(dados_navegacao + 1)
+        );
+
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -219,6 +239,11 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
         float escrita = numero_aleatorio_debugg();
     
         std::unique_lock<std::mutex> lock (mtx);
+
+        log_message(
+            "RECONSTRUCAO",
+            "Thread inicializada"
+        );
         
         while(dados_nivel >= 10){
             escrita_buffer_nivel.wait(lock);
@@ -240,14 +265,42 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
 
 void inspecao_camera(){
 
+    log_message(
+        "CAMERA",
+        "Thread inicializada"
+    );
+
+}
+
+void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
+
+    std::unique_lock<std::mutex> lock (mtx);
+
+    log_message(
+        "COLETOR",
+        "Thread inicializada"
+    );
+
+    lock.unlock();
 }
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
     std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
+
+    log_message(
+        "OPERACAO",
+        "Thread inicializada"
+    );
+
     lock.unlock(); // Protocolo de saída
 }
 
 void simulacao(){
+
+    log_message(
+        "SIMULACAO",
+        "Thread inicializada"
+    );
 
 }
 
@@ -325,6 +378,11 @@ int main (){
         );
 
         threads_navegacao.emplace_back(reconstrucao_teto, std::ref (mutex_nivel), std::ref(BUFFER_NIVEL));
+
+        log_message(
+            "MAIN",
+            "Iniciando controle_navegacao"
+        );
 
         controle_navegacao(std::ref (mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
 
