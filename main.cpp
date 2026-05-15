@@ -12,6 +12,15 @@
 
 #define ELEMENTOS_BUFFERS 10
 
+float numero_aleatorio_debugg(){
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(1.0f, 100.0f);
+
+    return dis(gen);
+}
+
 //sensores e atuadores disponíveis no caminhão:
 bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
 int i_lidar; //Resposta do sensor LIDAR do veículo exibindo a distância no eixo y, com relação à altura do robô 
@@ -49,7 +58,7 @@ void comando_navegacao(){
  */
 void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
-    int idx = 0;
+    int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
     for (int i = 0; i < 13; i++){
         
@@ -61,7 +70,6 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
         while(dados_fila == 0){
             leitura_buffer_navegacao.wait(lock);
         }
-
         std::cout << "Posição lida: " << BUFFER[idx] << std::endl;
         lock.unlock();
         dados_fila--;
@@ -72,22 +80,18 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 }
 
 void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
-    int idx = 0;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dis(1.0f, 100.0f);
 
+int idx = -1; // -1 para corrigir o inicio de escrita
     for (int i = 0; i < 13; i++){
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
-        float random_num = dis(gen);
     
         std::unique_lock<std::mutex> lock (mtx);
         
         while(dados_fila >=10){
             escrita_buffer_navegacao.wait(lock);
         }
-        BUFFER[idx] = random_num;
+        BUFFER[idx] = i;
         lock.unlock();
 
         dados_fila++;
