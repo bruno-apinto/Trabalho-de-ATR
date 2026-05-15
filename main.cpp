@@ -77,7 +77,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             leitura_buffer_navegacao.wait(lock);
         }
         //SEÇÃO CRÍTICA
-        std::cout << "Posição lida: " << BUFFER[idx] << std::endl;
+        std::cout << "Posição lida (navegação): " << BUFFER[idx] << std::endl;
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -115,7 +115,7 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
-        std::cout << "Posição escrita: " << escrita << std::endl; //para debbug
+        std::cout << "Posição escrita (navegação): " << escrita << std::endl; //para debbug
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -127,21 +127,80 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
     }
 }
 
+/**
+ * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER_NIVEL.
+ * 
+ * @param mtx mutex para sincronizar o buffer compartilhado
+ * @param BUFFER buffer de dados coletados pelo lidar
+ */
+void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
+
+    int idx = -1; // -1 para corrigir o inicio de leitura do vetor
+
+    while (true){
+        
+        idx++;
+        idx = idx%ELEMENTOS_BUFFERS;
+        
+        std::unique_lock<std::mutex> lock (mtx);
+
+        while(dados_nivel == 0){
+            leitura_buffer_nivel.wait(lock);
+        }
+        //SEÇÃO CRÍTICA
+        std::cout << "Posição lida (nível): " << BUFFER[idx] << std::endl;
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
+        dados_nivel--;
+        escrita_buffer_nivel.notify_one();
+
+        //std::this_thread::sleep_for (std::chrono::microseconds(50));
+
+    }
+
+}
+
+/**
+ * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como
+ * ESCRITOR do BUFFER_NIVEL
+ * 
+ * @param mtx mutex para buffer compartilhado
+ * @param BUFFER vetor de dados do nível da distancia do teto
+ */
 void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
 
-    std::unique_lock<std::mutex> lock (mtx);
-    lock.unlock();
+    int idx = -1; // -1 para corrigir o inicio de escrita
+    
+    while (true){
+        
+        idx++;
+        idx = idx % ELEMENTOS_BUFFERS;
+
+        float escrita = numero_aleatorio_debugg();
+    
+        std::unique_lock<std::mutex> lock (mtx);
+        
+        while(dados_nivel >= 10){
+            escrita_buffer_nivel.wait(lock);
+        }
+
+        //SEÇÃO CRÍTICA
+        BUFFER[idx] = escrita;
+        std::cout << "Posição escrita (nível): " << escrita << std::endl; //para debbug
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
+
+        dados_nivel++;
+
+        leitura_buffer_nivel.notify_one();
+
+    }
 }
 
 void inspecao_camera(){
 
-}
-
-void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    std::unique_lock<std::mutex> lock (mtx);
-
-    lock.unlock();
 }
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
@@ -194,11 +253,17 @@ int main (){
             threads_navegacao[i].detach();
         }
         
-
-
         std::cout << "Buffer navegação: ";
 
         for (auto i : BUFFER_NAVEGACAO){
+            std::cout << i << " ";
+        }
+
+        std::cout << std::endl;
+
+                std::cout << "Buffer nível: ";
+
+        for (auto i : BUFFER_NIVEL){
             std::cout << i << " ";
         }
 
