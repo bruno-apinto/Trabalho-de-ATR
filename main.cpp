@@ -66,7 +66,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
-    while (true){
+    for (int i = 0; i<20; i++){
         
         idx++;
         idx = idx%ELEMENTOS_BUFFERS;
@@ -100,7 +100,7 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
-    while (true){
+    for (int i = 0; i<20; i++){
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
@@ -137,7 +137,7 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
-    while (true){
+    for (int i = 0; i<20; i++){
         
         idx++;
         idx = idx%ELEMENTOS_BUFFERS;
@@ -172,7 +172,7 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
-    while (true){
+    for (int i = 0; i<20; i++){
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
