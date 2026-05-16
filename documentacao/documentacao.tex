@@ -1,0 +1,78 @@
+\documentclass[12pt]{article}
+
+\usepackage[brazil]{babel}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{minted}
+\usepackage{setspace}
+
+\begin{document}
+
+% ================= CAPA =================
+
+\begin{titlepage}
+    \centering
+
+    % Logo UFMG
+    \vspace*{1.5cm}
+    \includegraphics[width=4cm]{logo.png}
+
+    \vspace{1.5cm}
+
+    % Universidade
+    {\LARGE
+    \textbf{UNIVERSIDADE FEDERAL DE}\\[0.2cm]
+    \textbf{MINAS GERAIS}
+    }
+
+    \vfill
+
+
+    % Título
+    {\huge
+    \textbf{TRABALHO FINAL DE}\\[0.15cm]
+    \textbf{AUTOMAÇÃO EM TEMPO REAL}
+    }
+
+    \vspace{0.8cm}
+
+    {\Large Entrega 1: Definição da Arquitetura}
+
+    \vfill
+
+    % Integrantes
+    {\large
+    Ana Clara Melado \\[0.3cm]
+    Bruno Araujo Pinto \\[0.3cm]
+    Mariana Villefort Rabelo -- 2022061033
+    }
+
+    \vfill
+
+    % Rodapé
+    {\large
+    Belo Horizonte \\[0.2cm]
+    \today
+    }
+
+\end{titlepage}
+
+% ================= CONTEÚDO =================
+
+\section{Exemplo de Código}
+
+\begin{minted}[
+    linenos,
+    breaklines,
+    frame=lines,
+    fontsize=\small
+]{cpp}
+#include <iostream>
+
+int main() {
+    std::cout << "Olá mundo!" << std::endl;
+    return 0;
+}
+\end{minted}
+
+\end{document}
