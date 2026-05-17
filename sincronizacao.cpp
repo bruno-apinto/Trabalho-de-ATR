@@ -23,14 +23,19 @@ std::condition_variable devagar;
 //Variaveis de condição buffers
 std::condition_variable leitura_buffer_navegacao;
 std::condition_variable escrita_buffer_navegacao;
-int AR = 0; // active readers
-int WR = 0; // waiting readers
-int AW = 0; // active writers
-int WW = 0; // waiting writers
+
+int AR_NAVEGACAO = 0;
+int WR_NAVEGACAO = 0;
+int AW_NAVEGACAO = 0;
+int WW_NAVEGACAO = 0;
 
 std::condition_variable leitura_buffer_nivel; 
 std::condition_variable escrita_buffer_nivel;
-int dados_nivel = 0;
+
+int AR_NIVEL = 0;
+int WR_NIVEL = 0;
+int AW_NIVEL = 0;
+int WW_NIVEL = 0;
 
 //Funções auxiliares de debbug
 std::mutex mutex_log;
@@ -101,26 +106,30 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
         
         std::unique_lock<std::mutex> lock (mtx);
 
-        while(dados_navegacao == 0){
+        while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
 
-            log_message(
-                "CONTROLE",
-                "TESTE: buffer vazio -> consumidor bloqueado aguardando dados"
-            );
+            WR_NAVEGACAO++;
 
             leitura_buffer_navegacao.wait(lock);
 
-            log_message(
-                "CONTROLE",
-                "Consumidor retomou execução"
-            );
+            WR_NAVEGACAO--;
         }
+
+        AR_NAVEGACAO++;
+
+        lock.unlock();
 
         //SEÇÃO CRÍTICA
         float leitura = BUFFER[idx];
-        dados_navegacao--;
-        int quantidade = dados_navegacao;
         //SEÇÃO CRÍTICA
+
+        lock.lock();
+
+        AR_NAVEGACAO--;
+
+        if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0){
+            escrita_buffer_navegacao.notify_one();
+        }
 
         lock.unlock();
 
@@ -129,22 +138,10 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             "Posição lida (navegação): " + std::to_string(leitura)
         );
 
-        log_message(
-            "CONTROLE",
-            "Quantidade de dados no buffer: " + std::to_string(quantidade)
-        );
-
         // TESTE DE BUFFER CHEIO
         // Consumidor lento para encher o buffer
         std::this_thread::sleep_for(
             std::chrono::seconds(2)
-        );
-
-        escrita_buffer_navegacao.notify_one();
-
-        log_message(
-            "CONTROLE",
-            "notify_one enviado para produtor"
         );
 
     }
@@ -173,23 +170,26 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
         
         //META-LOCKING
-        while((AW+WW) > 0){
+        while((AW_NAVEGACAO + AR_NAVEGACAO) > 0){
 
             log_message(
                 "DISTANCIA",
-                "TESTE: buffer cheio -> produtor bloqueado aguardando espaço"
+                "Escritor aguardando acesso ao buffer navegacao"
             );
 
-            WR++;
+            WW_NAVEGACAO++;
+
             escrita_buffer_navegacao.wait(lock);
-            WR--;
+
+            WW_NAVEGACAO--;
 
             log_message(
                 "DISTANCIA",
-                "Produtor retomou execução"
+                "Escritor retomou execução"
             );
         }
-        AR++;
+
+        AW_NAVEGACAO++;
 
         lock.unlock();
 
@@ -201,13 +201,14 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
 
         lock.lock();
 
-        AR--;
+        AW_NAVEGACAO--;
 
-        dados_navegacao++;
-        int quantidade = dados_navegacao;
-
-        if(AR == 0 && WW > 0){
+        if(WW_NAVEGACAO > 0){
             escrita_buffer_navegacao.notify_one();
+        }
+
+        else if(WR_NAVEGACAO > 0){
+            leitura_buffer_navegacao.notify_all();
         }
         
         lock.unlock();
@@ -222,13 +223,6 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
             "Quantidade de dados no buffer: "
             + std::to_string(quantidade)
         );
-
-        leitura_buffer_navegacao.notify_one();
-
-        log_message(
-            "DISTANCIA",
-            "notify_one enviado para consumidor"
-        );
     }
 }
 
@@ -239,91 +233,133 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
  * @param mtx mutex para buffer compartilhado
  * @param BUFFER vetor de dados do nível da distancia do teto
  */
-void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaCompartilhada* shm){
+void reconstrucao_teto(
+    std::mutex &mtx_navegacao,
+    std::mutex &mtx_nivel,
+    std::mutex &mtx_camera,
+    std::vector <float> &BUFFER_NAVEGACAO,
+    std::vector <float> &BUFFER_NIVEL,
+    MemoriaCompartilhada* shm
+){
 
     log_message(
         "RECONSTRUCAO",
         "Thread inicializada"
     );
 
-    int idx = -1; // -1 para corrigir o inicio de escrita
+    int idx_navegacao = -1;
+    int idx_nivel = -1;
     
     for (int i = 0; i<20; i++){ //No final será trocado para while true
         
-        idx++;
-        idx = idx % ELEMENTOS_BUFFERS;
-        float escrita = numero_aleatorio_debugg();
-    
-        //META-LOCKING
-        std::unique_lock<std::mutex> lock (mtx);
-        
-        while( (AW + AR) > 0){
+        idx_navegacao++;
+        idx_navegacao = idx_navegacao % ELEMENTOS_BUFFERS;
 
-            log_message(
-                "RECONSTRUCAO",
-                "Buffer cheio -> produtor aguardando espaço"
-            );
+        std::unique_lock<std::mutex> lock_navegacao(mtx_navegacao);
 
-            WW++;
-            escrita_buffer_navegacao.wait(lock);
-            WW--;
+        while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
 
-            log_message(
-                "RECONSTRUCAO",
-                "Produtor retomou execução"
-            );
+            WR_NAVEGACAO++;
+
+            leitura_buffer_navegacao.wait(lock_navegacao);
+
+            WR_NAVEGACAO--;
         }
 
-        AW++;
-        lock.unlock();
+        AR_NAVEGACAO++;
+
+        lock_navegacao.unlock();
 
         //SEÇÃO CRÍTICA
 
-        BUFFER[idx] = escrita;
+        float leitura_navegacao = BUFFER_NAVEGACAO[idx_navegacao];
 
         //SEÇÃO CRÍTICA
 
-        lock.lock();
-        AW--;
-        dados_nivel++;
+        lock_navegacao.lock();
 
-        if (WW > 0)
+        AR_NAVEGACAO--;
+
+        if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0){
             escrita_buffer_navegacao.notify_one();
-        else if (WR > 0){
-            leitura_buffer_navegacao.notify_all();
         }
-        lock.unlock();
+
+        lock_navegacao.unlock();
+
+        idx_nivel++;
+        idx_nivel = idx_nivel % ELEMENTOS_BUFFERS;
+
+        float escrita = leitura_navegacao + numero_aleatorio_debugg();
+
+        std::unique_lock<std::mutex> lock_nivel (mtx_nivel);
+        
+        while((AW_NIVEL + AR_NIVEL) > 0){
+
+            log_message(
+                "RECONSTRUCAO",
+                "Escritor aguardando acesso ao buffer nivel"
+            );
+
+            WW_NIVEL++;
+
+            escrita_buffer_nivel.wait(lock_nivel);
+
+            WW_NIVEL--;
+
+            log_message(
+                "RECONSTRUCAO",
+                "Escritor retomou execução"
+            );
+        }
+
+        AW_NIVEL++;
+
+        lock_nivel.unlock();
+
+        //SEÇÃO CRÍTICA
+
+        BUFFER_NIVEL[idx_nivel] = escrita;
+
+        //SEÇÃO CRÍTICA
+
+        lock_nivel.lock();
+
+        AW_NIVEL--;
+
+        if (WW_NIVEL > 0){
+            escrita_buffer_nivel.notify_one();
+        }
+
+        else if (WR_NIVEL > 0){
+            leitura_buffer_nivel.notify_all();
+        }
+
+        lock_nivel.unlock();
 
         log_message(
             "RECONSTRUCAO",
             "Posição escrita (nível): " + std::to_string(escrita)
         );
 
-        leitura_buffer_nivel.notify_one();
+        bool encontrou_falha = true; // teste
 
-        log_message(
-            "RECONSTRUCAO",
-            "notify_one enviado para consumidor"
-        );
+        if(encontrou_falha){
+
+            std::lock_guard<std::mutex> lock_camera(mtx_camera);
+
+            shm->e_inspecao = true;
+            shm->o_liga_camera = true;
+            shm->j_sp_velocidade = 10;
+
+            log_message(
+                "RECONSTRUCAO",
+                "Falha detectada -> câmera acionada e velocidade reduzida"
+            );
+
+            camera.notify_one();
+            devagar.notify_one();
+        }
     }
-
-    bool encontrou_falha = true; // teste
-
-    if(encontrou_falha){
-        std::lock_guard<std::mutex> lock(mtx);
-        shm->e_inspecao = true;
-        shm->o_liga_camera = true;
-        shm->j_sp_velocidade = 10;
-
-        log_message(
-            "RECONSTRUCAO",
-            "Falha detectada -> câmera acionada e velocidade reduzida"
-        );
-    }
-
-        camera.notify_one();
-        devagar.notify_one();
-        
 }
 
 /**
@@ -348,45 +384,38 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
         
         std::unique_lock<std::mutex> lock (mtx);
 
-        while(dados_nivel == 0){
+        while((AW_NIVEL + WW_NIVEL) > 0){
 
-            log_message(
-                "COLETOR",
-                "Buffer vazio -> aguardando dados"
-            );
+            WR_NIVEL++;
 
             leitura_buffer_nivel.wait(lock);
 
-            log_message(
-                "COLETOR",
-                "Consumidor retomou execução"
-            );
+            WR_NIVEL--;
         }
+
+        AR_NIVEL++;
+
+        lock.unlock();
+
         //SEÇÃO CRÍTICA
+
         float leitura = BUFFER[idx];
 
-        dados_nivel--;
-        int quantidade = dados_nivel;
         //SEÇÃO CRÍTICA
+
+        lock.lock();
+
+        AR_NIVEL--;
+
+        if(AR_NIVEL == 0 && WW_NIVEL > 0){
+            escrita_buffer_nivel.notify_one();
+        }
 
         lock.unlock();
 
         log_message(
             "COLETOR",
             "Posição lida (nível): " + std::to_string(leitura)
-        );
-
-        log_message(
-            "COLETOR",
-            "Quantidade de dados no buffer: "
-            + std::to_string(quantidade)
-        );
-        
-        escrita_buffer_nivel.notify_one();
-
-        log_message(
-            "COLETOR",
-            "notify_one enviado para produtor"
         );
 
         //std::this_thread::sleep_for (std::chrono::microseconds(50));
@@ -398,6 +427,9 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
     std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
+
+    while(true){
+
         while(!shm->o_liga_camera){
             camera.wait(lock); // Espera até que haja uma falha para inspecionar
         }
@@ -406,7 +438,7 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
         shm->o_liga_camera = false;
         shm->e_inspecao = false;
-        lock.unlock();
+    }
 }
 
 void simulacao(){
