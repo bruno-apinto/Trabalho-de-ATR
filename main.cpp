@@ -47,6 +47,11 @@ int main (){
 
    if (pid == 0){
 
+            log_message(
+            "PROCESSO",
+            "Processo comando_navegacao criado"
+        );
+
         comando_navegacao ();
 
         // Exemplo: filho escreve comando remoto
@@ -86,10 +91,39 @@ int main (){
         std::mutex mutex_nivel;
 
         std::vector <std::thread> threads_navegacao;
+
+        log_message(
+            "MAIN",
+            "Criando thread distancia_percorrida"
+        );
+
         threads_navegacao.emplace_back(distancia_percorrida, std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+
+        log_message(
+            "MAIN",
+            "Criando thread inspecao_camera"
+        );
+
         threads_navegacao.emplace_back(inspecao_camera, std::ref(mutex_navegacao), shm);
+
+        log_message(
+            "MAIN",
+            "Criando thread coletor_dados"
+        );
+
         threads_navegacao.emplace_back(coletor_dados, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL));
+
+        log_message(
+            "MAIN",
+            "Criando thread reconstrucao_teto"
+        );
+
         threads_navegacao.emplace_back(reconstrucao_teto, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm);
+
+        log_message(
+            "MAIN",
+            "Iniciando controle_navegacao"
+        );
         
         controle_navegacao(std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
 
@@ -112,6 +146,11 @@ int main (){
         }
 
         std::cout << std::endl;
+
+        log_message(
+            "MAIN",
+            "Execução finalizada"
+        );
    }
 
     // Desanexa memória no pai
@@ -119,7 +158,6 @@ int main (){
 
     // Remove segmento de memória compartilhada
     shmctl(shmid, IPC_RMID, nullptr);
-
 
     return 0;
 }

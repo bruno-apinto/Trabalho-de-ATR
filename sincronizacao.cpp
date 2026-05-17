@@ -30,7 +30,7 @@ int WW = 0; // waiting writers
 
 std::condition_variable leitura_buffer_nivel; 
 std::condition_variable escrita_buffer_nivel;
-int dadso_nivel = 0;
+int dados_nivel = 0;
 
 //Funções auxiliares de debbug
 std::mutex mutex_log;
@@ -109,14 +109,30 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             leitura_buffer_navegacao.wait(lock);
+
+            log_message(
+                "CONTROLE",
+                "Consumidor retomou execução"
+            );
         }
 
         //SEÇÃO CRÍTICA
+        float leitura = BUFFER[idx];
+        dados_navegacao--;
+        int quantidade = dados_navegacao;
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
+
         log_message(
             "CONTROLE",
-            "Posição lida (navegação): " + std::to_string(BUFFER[idx])
+            "Posição lida (navegação): " + std::to_string(leitura)
         );
-        //SEÇÃO CRÍTICA
+
+        log_message(
+            "CONTROLE",
+            "Quantidade de dados no buffer: " + std::to_string(quantidade)
+        );
 
         // TESTE DE BUFFER CHEIO
         // Consumidor lento para encher o buffer
@@ -124,11 +140,12 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             std::chrono::seconds(2)
         );
 
-        lock.unlock();
-
-        dados_navegacao--;
-
         escrita_buffer_navegacao.notify_one();
+
+        log_message(
+            "CONTROLE",
+            "notify_one enviado para produtor"
+        );
 
     }
 
@@ -156,10 +173,21 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
         
         //META-LOCKING
-        while((AW+ww) > 0){
+        while((AW+WW) > 0){
+
+            log_message(
+                "DISTANCIA",
+                "TESTE: buffer cheio -> produtor bloqueado aguardando espaço"
+            );
+
             WR++;
             escrita_buffer_navegacao.wait(lock);
             WR--;
+
+            log_message(
+                "DISTANCIA",
+                "Produtor retomou execução"
+            );
         }
         AR++;
 
@@ -174,12 +202,33 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
         lock.lock();
 
         AR--;
+
+        dados_navegacao++;
+        int quantidade = dados_navegacao;
+
         if(AR == 0 && WW > 0){
             escrita_buffer_navegacao.notify_one();
         }
+        
         lock.unlock();
 
-        log_message("DISTANCIA","Posição escrita (navegação): " + std::to_string(escrita));
+        log_message(
+            "DISTANCIA",
+            "Posição escrita (navegação): " + std::to_string(escrita)
+        );
+
+        log_message(
+            "DISTANCIA",
+            "Quantidade de dados no buffer: "
+            + std::to_string(quantidade)
+        );
+
+        leitura_buffer_navegacao.notify_one();
+
+        log_message(
+            "DISTANCIA",
+            "notify_one enviado para consumidor"
+        );
     }
 }
 
@@ -191,6 +240,11 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
  * @param BUFFER vetor de dados do nível da distancia do teto
  */
 void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaCompartilhada* shm){
+
+    log_message(
+        "RECONSTRUCAO",
+        "Thread inicializada"
+    );
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
@@ -204,9 +258,20 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
         std::unique_lock<std::mutex> lock (mtx);
         
         while( (AW + AR) > 0){
+
+            log_message(
+                "RECONSTRUCAO",
+                "Buffer cheio -> produtor aguardando espaço"
+            );
+
             WW++;
             escrita_buffer_navegacao.wait(lock);
             WW--;
+
+            log_message(
+                "RECONSTRUCAO",
+                "Produtor retomou execução"
+            );
         }
 
         AW++;
@@ -219,7 +284,9 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
         //SEÇÃO CRÍTICA
 
         lock.lock();
-        AWW--;
+        AW--;
+        dados_nivel++;
+
         if (WW > 0)
             escrita_buffer_navegacao.notify_one();
         else if (WR > 0){
@@ -227,6 +294,17 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
         }
         lock.unlock();
 
+        log_message(
+            "RECONSTRUCAO",
+            "Posição escrita (nível): " + std::to_string(escrita)
+        );
+
+        leitura_buffer_nivel.notify_one();
+
+        log_message(
+            "RECONSTRUCAO",
+            "notify_one enviado para consumidor"
+        );
     }
 
     bool encontrou_falha = true; // teste
@@ -236,9 +314,12 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
         shm->e_inspecao = true;
         shm->o_liga_camera = true;
         shm->j_sp_velocidade = 10;
-    }
 
-        std::cout << "Falha detectada. Câmera acionada." << std::endl;
+        log_message(
+            "RECONSTRUCAO",
+            "Falha detectada -> câmera acionada e velocidade reduzida"
+        );
+    }
 
         camera.notify_one();
         devagar.notify_one();
@@ -275,17 +356,38 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             leitura_buffer_nivel.wait(lock);
+
+            log_message(
+                "COLETOR",
+                "Consumidor retomou execução"
+            );
         }
         //SEÇÃO CRÍTICA
-        log_message(
-            "COLETOR",
-            "Posição lida (nível): " + std::to_string(BUFFER[idx])
-        );
+        float leitura = BUFFER[idx];
+
+        dados_nivel--;
+        int quantidade = dados_nivel;
         //SEÇÃO CRÍTICA
 
         lock.unlock();
-        dados_nivel--;
+
+        log_message(
+            "COLETOR",
+            "Posição lida (nível): " + std::to_string(leitura)
+        );
+
+        log_message(
+            "COLETOR",
+            "Quantidade de dados no buffer: "
+            + std::to_string(quantidade)
+        );
+        
         escrita_buffer_nivel.notify_one();
+
+        log_message(
+            "COLETOR",
+            "notify_one enviado para produtor"
+        );
 
         //std::this_thread::sleep_for (std::chrono::microseconds(50));
 
