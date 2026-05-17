@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.12)  16 MAY 2026 09:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.12)  17 MAY 2026 12:45
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -287,22 +287,8 @@ Package pdftex.def Info: logo.png  used on input line 18.
 (pdftex.def)             Requested size: 113.81102pt x 113.85893pt.
  [1
 
-{/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./logo.png>]
-\pydata@fh@0=\write4
-\openout4 = `_D9A63DFFC1E0FD7E4E507DE78BB0DB5C.data.minted'.
-
-runsystem(latexminted config  --timestamp 20260516094018 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
-
- (./_D9A63DFFC1E0FD7E4E507DE78BB0DB5C.config.minted)
-runsystem(latexminted cleanconfig  --timestamp 20260516094018 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
-
- (./_minted/default.style.minted) (./_minted/FA3A21708CD2C2E49A8A7B740645FE25.highlight.minted
-LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 4.
-) [1]
-\openout4 = `_D9A63DFFC1E0FD7E4E507DE78BB0DB5C.data.minted'.
-
-runsystem(latexminted clean  --timestamp 20260516094018 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
+{/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./logo.png>] [1]
+runsystem(latexminted cleantemp  --timestamp 20260517124553 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
 
  (./documentacao.aux)
  ***********
@@ -311,18 +297,18 @@ L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 8947 strings out of 467525
- 202585 string characters out of 5418982
- 734898 words of memory out of 5000000
- 37771 multiletter control sequences out of 15000+600000
- 631072 words of font info for 52 fonts, out of 8000000 for 9000
+ 8659 strings out of 467525
+ 196227 string characters out of 5418982
+ 739898 words of memory out of 5000000
+ 37497 multiletter control sequences out of 15000+600000
+ 630304 words of font info for 49 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 86i,5n,93p,553b,712s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmitt10.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
-Output written on documentacao.pdf (2 pages, 262116 bytes).
+ 86i,5n,93p,672b,174s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
+Output written on documentacao.pdf (2 pages, 245419 bytes).
 PDF statistics:
- 44 PDF objects out of 1000 (max. 8388607)
- 25 compressed objects within 1 object stream
+ 34 PDF objects out of 1000 (max. 8388607)
+ 19 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  6 words of extra memory for PDF output out of 10000 (max. 10000000)
 
