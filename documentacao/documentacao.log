@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.12)  17 MAY 2026 12:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.12)  17 MAY 2026 18:07
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -288,7 +288,7 @@ Package pdftex.def Info: logo.png  used on input line 18.
  [1
 
 {/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./logo.png>] [1]
-runsystem(latexminted cleantemp  --timestamp 20260517124553 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
+runsystem(latexminted cleantemp  --timestamp 20260517180741 D9A63DFFC1E0FD7E4E507DE78BB0DB5C)...executed.
 
  (./documentacao.aux)
  ***********
@@ -305,7 +305,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  86i,5n,93p,672b,174s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on documentacao.pdf (2 pages, 245419 bytes).
+Output written on documentacao.pdf (2 pages, 245945 bytes).
 PDF statistics:
  34 PDF objects out of 1000 (max. 8388607)
  19 compressed objects within 1 object stream
