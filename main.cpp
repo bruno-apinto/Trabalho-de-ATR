@@ -194,6 +194,11 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
  */
 void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
+    log_message(
+        "COLETOR",
+        "Thread inicializada"
+    );
+
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
     for (int i = 0; i<20; i++){
@@ -204,10 +209,19 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
 
         while(dados_nivel == 0){
+
+            log_message(
+                "COLETOR",
+                "Buffer vazio -> aguardando dados"
+            );
+
             leitura_buffer_nivel.wait(lock);
         }
         //SEÇÃO CRÍTICA
-        std::cout << "Posição lida (nível): " << BUFFER[idx] << std::endl;
+        log_message(
+            "COLETOR",
+            "Posição lida (nível): " + std::to_string(BUFFER[idx])
+        );
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -229,6 +243,11 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
  */
 void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
 
+    log_message(
+        "RECONSTRUCAO",
+        "Thread inicializada"
+    );
+
     int idx = -1; // -1 para corrigir o inicio de escrita
     
     for (int i = 0; i<20; i++){
@@ -239,19 +258,25 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
         float escrita = numero_aleatorio_debugg();
     
         std::unique_lock<std::mutex> lock (mtx);
-
-        log_message(
-            "RECONSTRUCAO",
-            "Thread inicializada"
-        );
         
         while(dados_nivel >= 10){
+            
+            log_message(
+                "RECONSTRUCAO",
+                "Buffer cheio -> produtor aguardando espaço"
+            );
+
             escrita_buffer_nivel.wait(lock);
         }
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
-        std::cout << "Posição escrita (nível): " << escrita << std::endl; //para debbug
+
+        log_message(
+            "RECONSTRUCAO",
+            "Posição escrita (nível): " + std::to_string(escrita)
+        );
+
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -270,18 +295,6 @@ void inspecao_camera(){
         "Thread inicializada"
     );
 
-}
-
-void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    std::unique_lock<std::mutex> lock (mtx);
-
-    log_message(
-        "COLETOR",
-        "Thread inicializada"
-    );
-
-    lock.unlock();
 }
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
