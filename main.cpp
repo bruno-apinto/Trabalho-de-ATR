@@ -1,35 +1,9 @@
-#include <iostream>
-#include <thread>
-#include <vector>
-#include <atomic>
-#include <stdlib.h>
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <semaphore>
-#include <boost/asio.hpp>
-#include <random>
-#include <iomanip>
+#include "includes.hpp"
+#include "shared_memory.hpp"
+#include "simulacao.cpp"
 
 #define ELEMENTOS_BUFFERS 10
-
-std::mutex mutex_log;
-
-void log_message(const std::string& thread,
-                 const std::string& mensagem){
-
-    std::lock_guard<std::mutex> lock(mutex_log);
-
-    auto agora = std::chrono::system_clock::now();
-
-    auto tempo = std::chrono::system_clock::to_time_t(agora);
-
-    std::cout
-        << "[" << std::put_time(std::localtime(&tempo), "%H:%M:%S") << "] "
-        << "[" << thread << "] "
-        << mensagem
-        << std::endl;
-}
+const int SHM_SIZE = 1024; // Size of the shared memory segment
 
 float numero_aleatorio_debugg(){
 
@@ -40,20 +14,9 @@ float numero_aleatorio_debugg(){
     return dis(gen);
 }
 
-//sensores e atuadores disponíveis no caminhão:
-bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
-int i_lidar; //Resposta do sensor LIDAR do veículo exibindo a distância no eixo y, com relação à altura do robô 
-bool o_liga_camera; //Comando para ligar a câmera e realizar fotos da falha detectada na superfície
-int o_aceleracao; //Determina a aceleração do veículo em percentual (-100 a 100%)
-
-
-//estados e comandos:
-bool e_inspecao; //Estado que indica falha detectada na superfície e o robô está tirando fotos e navegando com velocidade limitada (1:falha, 0: sem falha)
-bool e_automatico; //Estado que identifica o modo de operação do robô (0: manual, 1: automático)
-bool c_automatico; //Comando para passar o robô para o modo automático (true). O reset desse comando
-bool c_man; //Comando para passar o robô para o modo manual (true).
-int j_sp_velocidade; //Setpoint de velocidade do robô para o controlador de velocidade.
-
+//sincronização
+std::condition_variable camera;
+std::condition_variable devagar;
 
 //variaveis de condição buffers
 std::condition_variable leitura_buffer_navegacao;
@@ -125,13 +88,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
-/**
- * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER_NAVEGACAO.
- * 
- * @param mtx mutex utilizado na variavel compartilhada
- * @param BUFFER historico de posições
- */
-void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
+void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
@@ -233,7 +190,7 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
     }
 
 }
-
+  
 /**
  * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como
  * ESCRITOR do BUFFER_NIVEL
@@ -241,12 +198,7 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
  * @param mtx mutex para buffer compartilhado
  * @param BUFFER vetor de dados do nível da distancia do teto
  */
-void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    log_message(
-        "RECONSTRUCAO",
-        "Thread inicializada"
-    );
+void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaCompartilhada* shm){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
@@ -286,44 +238,74 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
         leitura_buffer_nivel.notify_one();
 
     }
+
+    bool encontrou_falha = true; // teste
+
+    if(encontrou_falha){
+        std::lock_guard<std::mutex> lock(mtx);
+        shm->e_inspecao = true;
+        shm->o_liga_camera = true;
+        shm->j_sp_velocidade = 10;
+    }
+
+        std::cout << "Falha detectada. Câmera acionada." << std::endl;
+
+        camera.notify_one();
+        devagar.notify_one();
+        
 }
 
-void inspecao_camera(){
 
-    log_message(
-        "CAMERA",
-        "Thread inicializada"
-    );
+void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
-}
-
-void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
     std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
+        while(!shm->o_liga_camera){
+            camera.wait(lock); // Espera até que haja uma falha para inspecionar
+        }
 
-    log_message(
-        "OPERACAO",
-        "Thread inicializada"
-    );
+        //inspeciona...
 
-    lock.unlock(); // Protocolo de saída
+        shm->o_liga_camera = false;
+        shm->e_inspecao = false;
+        lock.unlock();
 }
-
-void simulacao(){
-
-    log_message(
-        "SIMULACAO",
-        "Thread inicializada"
-    );
-
-}
-
 
 int main (){
 
-    log_message(
-        "MAIN",
-        "Inicializando sistema"
-    );
+    simulacao();
+
+    // Generate a unique key for the shared memory segment 
+    key_t key = IPC_PRIVATE; // Use IPC_PRIVATE for a unique key 
+    
+    // Create a shared memory segment 
+    int shmid = shmget(key, sizeof(MemoriaCompartilhada), 0666 | IPC_CREAT);
+
+    if (shmid < 0) {
+        perror("Erro ao criar memória compartilhada");
+        return 1;
+    }
+
+    // Attach to the shared memory
+    MemoriaCompartilhada* shm = (MemoriaCompartilhada*) shmat(shmid, nullptr, 0);
+
+    if (shm == (void*) -1) {
+        perror("Erro ao anexar memória compartilhada");
+        return 1;
+    }
+
+    // Inicializa os valores da memória compartilhada
+    shm->i_encoder = false;
+    shm->i_lidar = 0;
+
+    shm->o_liga_camera = false;
+    shm->o_aceleracao = 0;
+
+    shm->e_inspecao = false;
+    shm->e_automatico = false;
+
+    shm->c_automatico = false;
+    shm->c_man = false;
+    shm->j_sp_velocidade = 0;
 
     //INICIALIZAÇÃO PROCESSOS
 
@@ -333,12 +315,18 @@ int main (){
 
    if (pid == 0){
 
-        log_message(
-            "PROCESSO",
-            "Processo comando_navegacao criado"
-        );
-
         comando_navegacao ();
+
+        // Exemplo: filho escreve comando remoto
+        shm->c_automatico = true;
+        shm->j_sp_velocidade = 50;
+
+        std::cout << "Comando de navegação escreveu na memória compartilhada:" << std::endl;
+        std::cout << "c_automatico = " << shm->c_automatico << std::endl;
+        std::cout << "j_sp_velocidade = " << shm->j_sp_velocidade << std::endl;
+
+        // Desanexa memória no filho
+        shmdt(shm);
    }
 
    else if (pid < 0){
@@ -347,6 +335,12 @@ int main (){
    }
 
    else {
+
+        wait(nullptr);
+
+        std::cout << "Controle de navegação lendo memória compartilhada:" << std::endl;
+        std::cout << "c_automatico = " << shm->c_automatico << std::endl;
+        std::cout << "j_sp_velocidade = " << shm->j_sp_velocidade << std::endl;
 
         //INICIALIZAÇÃO DE BUFFERS
         std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
@@ -363,41 +357,12 @@ int main (){
         std::mutex mutex_nivel;
 
         std::vector <std::thread> threads_navegacao;
-
-        log_message(
-            "MAIN",
-            "Criando thread distancia_percorrida"
-        );
-
-        threads_navegacao.emplace_back(distancia_percorrida, std::ref (mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
-
-        log_message(
-            "MAIN",
-            "Criando thread inspecao_camera"
-        );
-
-        threads_navegacao.emplace_back(inspecao_camera);
-
-        log_message(
-            "MAIN",
-            "Criando thread coletor_dados"
-        );
-
-        threads_navegacao.emplace_back(coletor_dados, std::ref (mutex_nivel), std::ref(BUFFER_NIVEL));
-
-        log_message(
-            "MAIN",
-            "Criando thread reconstrucao_teto"
-        );
-
-        threads_navegacao.emplace_back(reconstrucao_teto, std::ref (mutex_nivel), std::ref(BUFFER_NIVEL));
-
-        log_message(
-            "MAIN",
-            "Iniciando controle_navegacao"
-        );
-
-        controle_navegacao(std::ref (mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+        threads_navegacao.emplace_back(distancia_percorrida, std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+        threads_navegacao.emplace_back(inspecao_camera, std::ref(mutex_navegacao), shm);
+        threads_navegacao.emplace_back(coletor_dados, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL));
+        threads_navegacao.emplace_back(reconstrucao_teto, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm);
+        
+        controle_navegacao(std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
 
         for (int i = 0; i < threads_navegacao.size(); i++){
             threads_navegacao[i].detach();
@@ -411,7 +376,7 @@ int main (){
 
         std::cout << std::endl;
 
-                std::cout << "Buffer nível: ";
+        std::cout << "Buffer nível: ";
 
         for (auto i : BUFFER_NIVEL){
             std::cout << i << " ";
@@ -419,6 +384,13 @@ int main (){
 
         std::cout << std::endl;
    }
+
+    // Desanexa memória no pai
+    shmdt(shm);
+
+    // Remove segmento de memória compartilhada
+    shmctl(shmid, IPC_RMID, nullptr);
+
 
     return 0;
 }
