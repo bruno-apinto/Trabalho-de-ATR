@@ -6,6 +6,8 @@
 \usepackage{setspace}
 \usepackage{indentfirst}
 
+\frenchspacing
+
 \begin{document}
 
 % ================= CAPA =================
@@ -43,8 +45,8 @@
     % Integrantes
     {\large
     Ana Clara Melado \\[0.3cm]
-    Bruno Araujo Pinto - 2023038965\\[0.3cm]
-    Mariana Villefort Rabelo - 2022061033
+    Bruno Araujo Pinto, 2023038965\\[0.3cm]
+    Mariana Villefort Rabelo, 2022061033
     }
 
     \vfill
@@ -64,14 +66,17 @@
 \section{Proposta de Arquitetura}
 
     A arquitetura do trabalho foi realizada com o intuito de facilitar o máximo possível
-    a aplicação dos conceitos, por isso a utilização máxima de threads. A partir dos requsiitos mínimos,
+    a aplicação dos conceitos, por isso a utilização máxima de threads. A partir dos requisitos mínimos,
     pelo menos 2 processos foram criados. Além, aproveita-se das threads originárias dos póprios
-    processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura \ref{fig:arquitetura}.
+    processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura\ref{fig:arquitetura}.
 \begin{figure}[ht]
   \includegraphics[ width= \linewidth]{imagens/arquitetura_threades_processos.png}
-  \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}
-  \label{fig:arquitetura}
+  \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}\label{fig:arquitetura}
 \end{figure}
+
+Ademais, para a comunicação e recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
+ foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição,  de forma "normal". %chktex 18
+  E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
 
 \section{Resultados de Testes Preliminares Realizados}
 
