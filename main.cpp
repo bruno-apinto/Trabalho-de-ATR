@@ -100,14 +100,24 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             leitura_buffer_navegacao.wait(lock);
+
+            log_message(
+                "CONTROLE",
+                "Consumidor retomou execução"
+            );
         }
 
         //SEÇÃO CRÍTICA
+        float leitura = BUFFER[idx];
+        dados_navegacao--;
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
+
         log_message(
             "CONTROLE",
-            "Posição lida (navegação): " + std::to_string(BUFFER[idx])
+            "Posição lida (navegação): " + std::to_string(leitura)
         );
-        //SEÇÃO CRÍTICA
 
         // TESTE DE BUFFER CHEIO
         // Consumidor lento para encher o buffer
@@ -115,11 +125,12 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
             std::chrono::seconds(2)
         );
 
-        lock.unlock();
-
-        dados_navegacao--;
-
         escrita_buffer_navegacao.notify_one();
+
+        log_message(
+            "CONTROLE",
+            "notify_one enviado para produtor"
+        );
 
     }
 
@@ -159,10 +170,20 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             escrita_buffer_navegacao.wait(lock);
+
+            log_message(
+                "DISTANCIA",
+                "Produtor retomou execução"
+            );
         }
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
+        dados_navegacao++;
+        int quantidade = dados_navegacao;
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
 
         log_message(
             "DISTANCIA",
@@ -172,16 +193,15 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         log_message(
             "DISTANCIA",
             "Quantidade de dados no buffer: "
-            + std::to_string(dados_navegacao + 1)
+            + std::to_string(quantidade)
         );
 
-        //SEÇÃO CRÍTICA
-
-        lock.unlock();
-
-        dados_navegacao++;
-
         leitura_buffer_navegacao.notify_one();
+
+        log_message(
+            "DISTANCIA",
+            "notify_one enviado para consumidor"
+        );
 
     }
 }
@@ -216,19 +236,31 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             leitura_buffer_nivel.wait(lock);
+
+            log_message(
+                "COLETOR",
+                "Consumidor retomou execução"
+            );
         }
+
         //SEÇÃO CRÍTICA
-        log_message(
-            "COLETOR",
-            "Posição lida (nível): " + std::to_string(BUFFER[idx])
-        );
+        float leitura = BUFFER[idx];
+        dados_nivel--;
         //SEÇÃO CRÍTICA
 
         lock.unlock();
-        dados_nivel--;
+
+        log_message(
+            "COLETOR",
+            "Posição lida (nível): " + std::to_string(leitura)
+        );
+
         escrita_buffer_nivel.notify_one();
 
-        //std::this_thread::sleep_for (std::chrono::microseconds(50));
+        log_message(
+            "COLETOR",
+            "notify_one enviado para produtor"
+        );
 
     }
 
@@ -267,23 +299,31 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
             );
 
             escrita_buffer_nivel.wait(lock);
+
+            log_message(
+                "RECONSTRUCAO",
+                "Produtor retomou execução"
+            );
         }
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
+        dados_nivel++;
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
 
         log_message(
             "RECONSTRUCAO",
             "Posição escrita (nível): " + std::to_string(escrita)
         );
 
-        //SEÇÃO CRÍTICA
-
-        lock.unlock();
-
-        dados_nivel++;
-
         leitura_buffer_nivel.notify_one();
+
+        log_message(
+            "RECONSTRUCAO",
+            "notify_one enviado para consumidor"
+        );
 
     }
 }
@@ -411,13 +451,18 @@ int main (){
 
         std::cout << std::endl;
 
-                std::cout << "Buffer nível: ";
+        std::cout << "Buffer nível: ";
 
         for (auto i : BUFFER_NIVEL){
             std::cout << i << " ";
         }
 
         std::cout << std::endl;
+
+        log_message(
+            "MAIN",
+            "Execução finalizada"
+        );
    }
 
     return 0;
