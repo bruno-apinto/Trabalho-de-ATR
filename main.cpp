@@ -1,6 +1,5 @@
 #include "sincronizacao.hpp"
 
-
 int main (){
 
     log_message(
