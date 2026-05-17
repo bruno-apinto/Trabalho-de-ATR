@@ -13,6 +13,7 @@
 #include <boost/asio.hpp>
 #include <random>
 #include <iomanip>
+#include "shared_memory.hpp"
 
 #define ELEMENTOS_BUFFERS 10
 
@@ -59,9 +60,9 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER);
  * @param mtx mutex para buffer compartilhado
  * @param BUFFER vetor de dados do nível da distancia do teto
  */
-void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER);
+void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, std::vector <float> &BUFFER_NAVEGACAO, std::vector <float> &BUFFER_NIVEL, MemoriaCompartilhada* shm);
 
-void inspecao_camera();
+void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm);
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER);
 

@@ -1,3 +1,6 @@
+#ifndef SHARED_MEMORY_HPP
+#define SHARED_MEMORY_HPP
+
 struct MemoriaCompartilhada {
 
     //sensores e atuadores disponíveis no carrinho:
@@ -13,3 +16,5 @@ struct MemoriaCompartilhada {
     bool c_man; //Comando para passar o robô para o modo manual (true).
     int j_sp_velocidade; //Setpoint de velocidade do robô para o controlador de velocidade.
 };
+
+#endif

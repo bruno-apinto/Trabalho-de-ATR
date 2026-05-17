@@ -1,4 +1,4 @@
-#include "sincronizacao.hpp"
+#include "../include/sincronizacao.hpp"
 
 #define ELEMENTOS_BUFFERS 10
 const int SHM_SIZE = 1024; // Size of the shared memory segment
@@ -40,12 +40,6 @@ int WW_NIVEL = 0;
 //Funções auxiliares de debbug
 std::mutex mutex_log;
 
-/**
- * @brief  Imprime a mensagem na tela
- * 
- * @param thread Nome da thread sendo executada
- * @param mensagem Mensagem a ser exibida
- */
 void log_message(const std::string& thread,
                  const std::string& mensagem){
 
@@ -62,11 +56,6 @@ void log_message(const std::string& thread,
         << std::endl;
 }
 
-/**
- * @brief Gera um numero aleatorio para simular o preenchimento dos buffers
- * 
- * @return float 
- */
 float numero_aleatorio_debugg(){
 
     std::random_device rd;
@@ -78,23 +67,10 @@ float numero_aleatorio_debugg(){
 
 //FUNÇÕES DO SISTEMA 
 
-/**
- * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
- *  e liga/desliga para o controle de navegação. O comando de navegação que deve implementar a lógica de manual/ 
- * automático. Exerce a função de ESCRITOR sobre o BUFFER_NAVEGACAO
- * 
- */
 void comando_navegacao(){
 
 }
 
-/**
- * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)
- *  a partir de um setpoint de velocidade recebido pelo Comando de Navegação. Exerce a função de LEITOR do BUFFER _NAVEGACAO
- * 
- * @param mtx mutex utilizado
- * @param BUFFER historico de posições
- */
 void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
@@ -148,12 +124,6 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
-/**
- * @brief Calcula a distância que foi percorrida pelo carrinho
- * 
- * @param mtx mutex utilizado
- * @param BUFFER vetor de daods compartilhado
- */
 void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
@@ -217,35 +187,12 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
             "DISTANCIA",
             "Posição escrita (navegação): " + std::to_string(escrita)
         );
-
-        log_message(
-            "DISTANCIA",
-            "Quantidade de dados no buffer: "
-            + std::to_string(quantidade)
-        );
     }
 }
 
-/**
- * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como
- * ESCRITOR do BUFFER_NIVEL
- * 
- * @param mtx mutex para buffer compartilhado
- * @param BUFFER vetor de dados do nível da distancia do teto
- */
-void reconstrucao_teto(
-    std::mutex &mtx_navegacao,
-    std::mutex &mtx_nivel,
-    std::mutex &mtx_camera,
-    std::vector <float> &BUFFER_NAVEGACAO,
-    std::vector <float> &BUFFER_NIVEL,
-    MemoriaCompartilhada* shm
-){
+void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, std::vector <float> &BUFFER_NAVEGACAO, std::vector <float> &BUFFER_NIVEL, MemoriaCompartilhada* shm){
 
-    log_message(
-        "RECONSTRUCAO",
-        "Thread inicializada"
-    );
+    log_message("RECONSTRUCAO", "Thread inicializada");
 
     int idx_navegacao = -1;
     int idx_nivel = -1;
@@ -270,11 +217,11 @@ void reconstrucao_teto(
 
         lock_navegacao.unlock();
 
-        //SEÇÃO CRÍTICA
+        //SEÇÃO CRÍTICA NAVEGACAO
 
         float leitura_navegacao = BUFFER_NAVEGACAO[idx_navegacao];
 
-        //SEÇÃO CRÍTICA
+        //SEÇÃO CRÍTICA NAVEGACAO
 
         lock_navegacao.lock();
 
@@ -295,10 +242,7 @@ void reconstrucao_teto(
         
         while((AW_NIVEL + AR_NIVEL) > 0){
 
-            log_message(
-                "RECONSTRUCAO",
-                "Escritor aguardando acesso ao buffer nivel"
-            );
+            log_message("RECONSTRUCAO", "Escritor aguardando acesso ao buffer nivel");
 
             WW_NIVEL++;
 
@@ -306,21 +250,18 @@ void reconstrucao_teto(
 
             WW_NIVEL--;
 
-            log_message(
-                "RECONSTRUCAO",
-                "Escritor retomou execução"
-            );
+            log_message("RECONSTRUCAO","Escritor retomou execução");
         }
 
         AW_NIVEL++;
 
         lock_nivel.unlock();
 
-        //SEÇÃO CRÍTICA
+        //SEÇÃO CRÍTICA NIVEL
 
         BUFFER_NIVEL[idx_nivel] = escrita;
 
-        //SEÇÃO CRÍTICA
+        //SEÇÃO CRÍTICA NIVEL
 
         lock_nivel.lock();
 
@@ -336,10 +277,7 @@ void reconstrucao_teto(
 
         lock_nivel.unlock();
 
-        log_message(
-            "RECONSTRUCAO",
-            "Posição escrita (nível): " + std::to_string(escrita)
-        );
+        log_message("RECONSTRUCAO", "Posição escrita (nível): " + std::to_string(escrita));
 
         bool encontrou_falha = true; // teste
 
@@ -351,10 +289,7 @@ void reconstrucao_teto(
             shm->o_liga_camera = true;
             shm->j_sp_velocidade = 10;
 
-            log_message(
-                "RECONSTRUCAO",
-                "Falha detectada -> câmera acionada e velocidade reduzida"
-            );
+            log_message("RECONSTRUCAO","Falha detectada -> câmera acionada e velocidade reduzida");
 
             camera.notify_one();
             devagar.notify_one();
@@ -362,12 +297,6 @@ void reconstrucao_teto(
     }
 }
 
-/**
- * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER_NIVEL.
- * 
- * @param mtx mutex para sincronizar o buffer compartilhado
- * @param BUFFER buffer de dados coletados pelo lidar
- */
 void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
     log_message(
