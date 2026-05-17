@@ -143,9 +143,9 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         // TESTE DE BUFFER VAZIO
         // Produtor lento no início
 
-        std::this_thread::sleep_for(
+        /*std::this_thread::sleep_for(
             std::chrono::seconds(1)
-        );
+        );*/
 
         float escrita = numero_aleatorio_debugg();
     
@@ -164,6 +164,8 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
 
+        //SEÇÃO CRÍTICA
+
         log_message(
             "DISTANCIA",
             "Posição escrita (navegação): " + std::to_string(escrita)
@@ -174,8 +176,6 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
             "Quantidade de dados no buffer: "
             + std::to_string(dados_navegacao + 1)
         );
-
-        //SEÇÃO CRÍTICA
 
         lock.unlock();
 
@@ -270,18 +270,6 @@ void inspecao_camera(){
         "Thread inicializada"
     );
 
-}
-
-void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    std::unique_lock<std::mutex> lock (mtx);
-
-    log_message(
-        "COLETOR",
-        "Thread inicializada"
-    );
-
-    lock.unlock();
 }
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
