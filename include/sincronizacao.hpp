@@ -1,18 +1,7 @@
 #ifndef SINCRONIZACAO_H
 #define SINCRONIZACAO_H
 
-#include <iostream>
-#include <thread>
-#include <vector>
-#include <atomic>
-#include <stdlib.h>
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <semaphore>
-#include <boost/asio.hpp>
-#include <random>
-#include <iomanip>
+#include "includes.hpp"
 #include "shared_memory.hpp"
 
 #define ELEMENTOS_BUFFERS 10
@@ -65,7 +54,5 @@ void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mu
 void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm);
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER);
-
-void simulacao();
 
 #endif

@@ -369,12 +369,3 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
         shm->e_inspecao = false;
     }
 }
-
-void simulacao(){
-
-    log_message(
-        "SIMULACAO",
-        "Thread inicializada"
-    );
-
-}

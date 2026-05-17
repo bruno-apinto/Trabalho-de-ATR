@@ -1,6 +1,7 @@
 #include "include/includes.hpp"
 #include "include/shared_memory.hpp"
 #include "include/sincronizacao.hpp"
+#include "include/simulacao.hpp"
 
 int main (){
 
