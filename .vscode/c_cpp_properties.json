@@ -1,15 +1,24 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Mac",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/opt/homebrew/include",
+                "/opt/homebrew/Cellar/boost/1.90.0_1/include"
             ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**",
+                    "/opt/homebrew/include",
+                    "/opt/homebrew/Cellar/boost/1.90.0_1/include"
+                ]
+            },
             "defines": [],
-            "compilerPath": "/usr/bin/g++",
+            "compilerPath": "/usr/bin/clang++",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "macos-clang-arm64"
         }
     ],
     "version": 4
