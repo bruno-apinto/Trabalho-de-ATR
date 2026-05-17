@@ -1,5 +1,8 @@
 #include "sincronizacao.hpp"
 
+#define ELEMENTOS_BUFFERS 10
+const int SHM_SIZE = 1024; // Size of the shared memory segment
+
 //Sincronização de buffers
 std::condition_variable leitura_buffer_navegacao;
 int dados_navegacao = 0;
@@ -49,6 +52,19 @@ float numero_aleatorio_debugg(){
 
     return dis(gen);
 }
+
+//sincronização
+std::condition_variable camera;
+std::condition_variable devagar;
+
+//variaveis de condição buffers
+std::condition_variable leitura_buffer_navegacao;
+int dados_navegacao = 0;
+std::condition_variable escrita_buffer_navegacao;
+
+std::condition_variable leitura_buffer_nivel;
+int dados_nivel = 0;
+std::condition_variable escrita_buffer_nivel;
 
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
@@ -111,13 +127,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
-/**
- * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER_NAVEGACAO.
- * 
- * @param mtx mutex utilizado na variavel compartilhada
- * @param BUFFER historico de posições
- */
-void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
+void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
@@ -129,9 +139,9 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         // TESTE DE BUFFER VAZIO
         // Produtor lento no início
 
-        /*std::this_thread::sleep_for(
+        std::this_thread::sleep_for(
             std::chrono::seconds(1)
-        );*/
+        );
 
         float escrita = numero_aleatorio_debugg();
     
@@ -150,8 +160,6 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
 
-        //SEÇÃO CRÍTICA
-
         log_message(
             "DISTANCIA",
             "Posição escrita (navegação): " + std::to_string(escrita)
@@ -162,6 +170,8 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
             "Quantidade de dados no buffer: "
             + std::to_string(dados_navegacao + 1)
         );
+
+        //SEÇÃO CRÍTICA
 
         lock.unlock();
 
@@ -180,6 +190,11 @@ void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER){
  */
 void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
+    log_message(
+        "COLETOR",
+        "Thread inicializada"
+    );
+
     int idx = -1; // -1 para corrigir o inicio de leitura do vetor
 
     for (int i = 0; i<20; i++){
@@ -190,10 +205,19 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
         std::unique_lock<std::mutex> lock (mtx);
 
         while(dados_nivel == 0){
+
+            log_message(
+                "COLETOR",
+                "Buffer vazio -> aguardando dados"
+            );
+
             leitura_buffer_nivel.wait(lock);
         }
         //SEÇÃO CRÍTICA
-        std::cout << "Posição lida (nível): " << BUFFER[idx] << std::endl;
+        log_message(
+            "COLETOR",
+            "Posição lida (nível): " + std::to_string(BUFFER[idx])
+        );
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -205,7 +229,7 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
     }
 
 }
-
+  
 /**
  * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como
  * ESCRITOR do BUFFER_NIVEL
@@ -213,7 +237,7 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
  * @param mtx mutex para buffer compartilhado
  * @param BUFFER vetor de dados do nível da distancia do teto
  */
-void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
+void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaCompartilhada* shm){
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
@@ -225,19 +249,25 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
         float escrita = numero_aleatorio_debugg();
     
         std::unique_lock<std::mutex> lock (mtx);
-
-        log_message(
-            "RECONSTRUCAO",
-            "Thread inicializada"
-        );
         
         while(dados_nivel >= 10){
+            
+            log_message(
+                "RECONSTRUCAO",
+                "Buffer cheio -> produtor aguardando espaço"
+            );
+
             escrita_buffer_nivel.wait(lock);
         }
 
         //SEÇÃO CRÍTICA
         BUFFER[idx] = escrita;
-        std::cout << "Posição escrita (nível): " << escrita << std::endl; //para debbug
+
+        log_message(
+            "RECONSTRUCAO",
+            "Posição escrita (nível): " + std::to_string(escrita)
+        );
+
         //SEÇÃO CRÍTICA
 
         lock.unlock();
@@ -247,26 +277,36 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER){
         leitura_buffer_nivel.notify_one();
 
     }
+
+    bool encontrou_falha = true; // teste
+
+    if(encontrou_falha){
+        std::lock_guard<std::mutex> lock(mtx);
+        shm->e_inspecao = true;
+        shm->o_liga_camera = true;
+        shm->j_sp_velocidade = 10;
+    }
+
+        std::cout << "Falha detectada. Câmera acionada." << std::endl;
+
+        camera.notify_one();
+        devagar.notify_one();
+        
 }
 
-void inspecao_camera(){
 
-    log_message(
-        "CAMERA",
-        "Thread inicializada"
-    );
+void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
-}
-
-void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER){
     std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
+        while(!shm->o_liga_camera){
+            camera.wait(lock); // Espera até que haja uma falha para inspecionar
+        }
 
-    log_message(
-        "OPERACAO",
-        "Thread inicializada"
-    );
+        //inspeciona...
 
-    lock.unlock(); // Protocolo de saída
+        shm->o_liga_camera = false;
+        shm->e_inspecao = false;
+        lock.unlock();
 }
 
 void simulacao(){
