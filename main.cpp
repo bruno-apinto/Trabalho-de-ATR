@@ -78,10 +78,7 @@ int main (){
         std::vector <float> BUFFER_NAVEGACAO (ELEMENTOS_BUFFERS); //posição do carrinho
         std::vector <float> BUFFER_NIVEL (ELEMENTOS_BUFFERS); //leitura de nivel
 
-        log_message(
-            "MAIN",
-            "Buffers inicializados"
-        );
+        log_message("MAIN","Buffers inicializados");
 
         //INICIALIZAÇÃO AS THREADS
 
