@@ -148,50 +148,38 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
-
-        // TESTE DE BUFFER VAZIO
-        // Produtor lento no início
-
-        std::this_thread::sleep_for(
-            std::chrono::seconds(1)
-        );
-
         float escrita = numero_aleatorio_debugg();
-    
+
+        // Produtor lento no início
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
         std::unique_lock<std::mutex> lock (mtx);
         
-        while(dados_navegacao >=10){
-
-            log_message(
-                "DISTANCIA",
-                "TESTE: buffer cheio -> produtor bloqueado aguardando espaço"
-            );
-
+        //META-LOCKING
+        while((AW+ww) > 0){
+            WR++;
             escrita_buffer_navegacao.wait(lock);
+            WR--;
         }
-
-        //SEÇÃO CRÍTICA
-        BUFFER[idx] = escrita;
-
-        log_message(
-            "DISTANCIA",
-            "Posição escrita (navegação): " + std::to_string(escrita)
-        );
-
-        log_message(
-            "DISTANCIA",
-            "Quantidade de dados no buffer: "
-            + std::to_string(dados_navegacao + 1)
-        );
-
-        //SEÇÃO CRÍTICA
+        AR++;
 
         lock.unlock();
 
-        dados_navegacao++;
+        //SEÇÃO CRÍTICA
 
-        leitura_buffer_navegacao.notify_one();
+        BUFFER[idx] = escrita;
 
+        //SEÇÃO CRÍTICA
+
+        lock.lock();
+
+        AR--;
+        if(AR == 0 && WW > 0){
+            escrita_buffer_navegacao.notify_one();
+        }
+        lock.unlock();
+
+        log_message("DISTANCIA","Posição escrita (navegação): " + std::to_string(escrita));
     }
 }
 
@@ -206,12 +194,13 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
 
     int idx = -1; // -1 para corrigir o inicio de escrita
     
-    for (int i = 0; i<20; i++){
+    for (int i = 0; i<20; i++){ //No final será trocado para while true
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
         float escrita = numero_aleatorio_debugg();
     
+        //META-LOCKING
         std::unique_lock<std::mutex> lock (mtx);
         
         while( (AW + AR) > 0){
@@ -226,7 +215,6 @@ void reconstrucao_teto(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaComp
         //SEÇÃO CRÍTICA
 
         BUFFER[idx] = escrita;
-
 
         //SEÇÃO CRÍTICA
 
