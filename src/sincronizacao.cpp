@@ -3,22 +3,12 @@
 #define ELEMENTOS_BUFFERS 10
 const int SHM_SIZE = 1024; // Size of the shared memory segment
 
-//sensores e atuadores disponíveis no caminhão:
-bool i_encoder; //Variável que simula a entrada de um encoder, que troca de estado a cada metro percorrido pelo robô
-int i_lidar; //Resposta do sensor LIDAR do veículo exibindo a distância no eixo y, com relação à altura do robô 
-bool o_liga_camera; //Comando para ligar a câmera e realizar fotos da falha detectada na superfície
-int o_aceleracao; //Determina a aceleração do veículo em percentual (-100 a 100%)
-
-//estados e comandos:
-bool e_inspecao; //Estado que indica falha detectada na superfície e o robô está tirando fotos e navegando com velocidade limitada (1:falha, 0: sem falha)
-bool e_automatico; //Estado que identifica o modo de operação do robô (0: manual, 1: automático)
-bool c_automatico; //Comando para passar o robô para o modo automático (true). O reset desse comando
-bool c_man; //Comando para passar o robô para o modo manual (true).
-int j_sp_velocidade; //Setpoint de velocidade do robô para o controlador de velocidade.
-
 //sincronização
 std::condition_variable camera;
-std::condition_variable devagar;
+
+//teste para finalizar a camera
+int eventos_camera = 0;
+bool finalizar_camera = false;
 
 //Variaveis de condição buffers
 std::condition_variable leitura_buffer_navegacao;
@@ -289,12 +279,23 @@ void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mu
             shm->o_liga_camera = true;
             shm->j_sp_velocidade = 10;
 
-            log_message("RECONSTRUCAO","Falha detectada -> câmera acionada e velocidade reduzida");
+            eventos_camera++;
+
+            log_message(
+                "RECONSTRUCAO",
+                "Falha detectada -> câmera acionada e velocidade reduzida"
+            );
 
             camera.notify_one();
-            devagar.notify_one();
         }
     }
+
+        std::lock_guard<std::mutex> lock_camera(mtx_camera);
+        finalizar_camera = true;
+
+    camera.notify_one();
+
+    log_message("RECONSTRUCAO", "Thread finalizada");
 }
 
 void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
@@ -359,13 +360,20 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
     while(true){
 
-        while(!shm->o_liga_camera){
+        while(!(eventos_camera > 0 || finalizar_camera)){
             camera.wait(lock); // Espera até que haja uma falha para inspecionar
         }
+
+        if (eventos_camera == 0 && finalizar_camera) {
+            break;
+        }
+
+         eventos_camera--;
 
         //inspeciona...
 
         shm->o_liga_camera = false;
         shm->e_inspecao = false;
+        
     }
 }

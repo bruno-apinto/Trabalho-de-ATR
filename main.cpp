@@ -153,8 +153,14 @@ int main (){
             std::ref(BUFFER_NAVEGACAO)
         );
 
-        for (int i = 0; i < threads_navegacao.size(); i++){
-            threads_navegacao[i].detach();
+        for (size_t i = 0; i < threads_navegacao.size(); i++) {
+            log_message("MAIN", "Esperando thread " + std::to_string(i));
+
+            if (threads_navegacao[i].joinable()) {
+                threads_navegacao[i].join();
+            }
+
+            log_message("MAIN", "Thread " + std::to_string(i) + " finalizada");
         }
         
         std::cout << "Buffer navegação: ";
