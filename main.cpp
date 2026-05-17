@@ -89,6 +89,7 @@ int main (){
 
         std::mutex mutex_navegacao;
         std::mutex mutex_nivel;
+        std::mutex mutex_camera;
 
         std::vector <std::thread> threads_navegacao;
 
@@ -97,35 +98,59 @@ int main (){
             "Criando thread distancia_percorrida"
         );
 
-        threads_navegacao.emplace_back(distancia_percorrida, std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+        threads_navegacao.emplace_back(
+            distancia_percorrida,
+            std::ref(mutex_navegacao),
+            std::ref(BUFFER_NAVEGACAO)
+        );
 
         log_message(
             "MAIN",
             "Criando thread inspecao_camera"
         );
 
-        threads_navegacao.emplace_back(inspecao_camera, std::ref(mutex_navegacao), shm);
+        threads_navegacao.emplace_back(
+            inspecao_camera,
+            std::ref(mutex_camera),
+            shm
+        );
 
         log_message(
             "MAIN",
             "Criando thread coletor_dados"
         );
 
-        threads_navegacao.emplace_back(coletor_dados, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL));
+        threads_navegacao.emplace_back(
+            coletor_dados,
+            std::ref(mutex_nivel),
+            std::ref(BUFFER_NIVEL)
+        );
 
         log_message(
             "MAIN",
             "Criando thread reconstrucao_teto"
         );
 
-        threads_navegacao.emplace_back(reconstrucao_teto, std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm);
+        threads_navegacao.emplace_back(
+            reconstrucao_teto,
+            std::ref(mutex_navegacao),
+            std::ref(mutex_nivel),
+            std::ref(mutex_camera),
+            std::ref(BUFFER_NAVEGACAO),
+            std::ref(BUFFER_NIVEL),
+            shm
+        );
 
         log_message(
             "MAIN",
-            "Iniciando controle_navegacao"
+            "Criando thread controle_navegacao"
         );
-        
-        controle_navegacao(std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO));
+
+        threads_navegacao.emplace_back(
+            controle_navegacao,
+            std::ref(mutex_navegacao),
+            std::ref(BUFFER_NAVEGACAO)
+        );
 
         for (int i = 0; i < threads_navegacao.size(); i++){
             threads_navegacao[i].detach();
