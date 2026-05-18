@@ -21,11 +21,7 @@ int WW_NAVEGACAO = 0;
 
 std::condition_variable leitura_buffer_nivel; 
 std::condition_variable escrita_buffer_nivel;
-
-int AR_NIVEL = 0;
-int WR_NIVEL = 0;
-int AW_NIVEL = 0;
-int WW_NIVEL = 0;
+int dados_nivel = 0;
 
 //Funções auxiliares de debbug
 std::mutex mutex_log;
@@ -230,44 +226,28 @@ void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mu
 
         std::unique_lock<std::mutex> lock_nivel (mtx_nivel);
         
-        while((AW_NIVEL + AR_NIVEL) > 0){
-
-            log_message("RECONSTRUCAO", "Escritor aguardando acesso ao buffer nivel");
-
-            WW_NIVEL++;
+        while(dados_nivel >= 10){
+            
+            log_message(
+                "RECONSTRUCAO",
+                "Buffer cheio -> produtor aguardando espaço"
+            );
 
             escrita_buffer_nivel.wait(lock_nivel);
+        }   
 
-            WW_NIVEL--;
-
-            log_message("RECONSTRUCAO","Escritor retomou execução");
-        }
-
-        AW_NIVEL++;
-
-        lock_nivel.unlock();
-
-        //SEÇÃO CRÍTICA NIVEL
-
+        //SEÇÃO CRÍTICA NÍVEL
         BUFFER_NIVEL[idx_nivel] = escrita;
+        dados_nivel++;
+        leitura_buffer_nivel.notify_one();
 
-        //SEÇÃO CRÍTICA NIVEL
-
-        lock_nivel.lock();
-
-        AW_NIVEL--;
-
-        if (WW_NIVEL > 0){
-            escrita_buffer_nivel.notify_one();
-        }
-
-        else if (WR_NIVEL > 0){
-            leitura_buffer_nivel.notify_all();
-        }
+        log_message(
+            "RECONSTRUCAO",
+            "Posição escrita (nível): " + std::to_string(escrita)
+        );
+        //SEÇÃO CRÍTICA NÍVEL
 
         lock_nivel.unlock();
-
-        log_message("RECONSTRUCAO", "Posição escrita (nível): " + std::to_string(escrita));
 
         bool encontrou_falha = true; // teste
 
@@ -314,39 +294,25 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
         
         std::unique_lock<std::mutex> lock (mtx);
 
-        while((AW_NIVEL + WW_NIVEL) > 0){
+        while(dados_nivel == 0){
 
-            WR_NIVEL++;
+            log_message(
+                "COLETOR",
+                "Buffer vazio -> aguardando dados"
+            );
 
             leitura_buffer_nivel.wait(lock);
-
-            WR_NIVEL--;
         }
-
-        AR_NIVEL++;
-
-        lock.unlock();
-
         //SEÇÃO CRÍTICA
-
-        float leitura = BUFFER[idx];
-
-        //SEÇÃO CRÍTICA
-
-        lock.lock();
-
-        AR_NIVEL--;
-
-        if(AR_NIVEL == 0 && WW_NIVEL > 0){
-            escrita_buffer_nivel.notify_one();
-        }
-
-        lock.unlock();
-
         log_message(
             "COLETOR",
-            "Posição lida (nível): " + std::to_string(leitura)
+            "Posição lida (nível): " + std::to_string(BUFFER[idx])
         );
+        dados_nivel--;
+        escrita_buffer_nivel.notify_one();
+        //SEÇÃO CRÍTICA
+
+        lock.unlock();
 
         //std::this_thread::sleep_for (std::chrono::microseconds(50));
 
@@ -356,9 +322,9 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
 void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
-    std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
-
     while(true){
+
+        std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
 
         while(!(eventos_camera > 0 || finalizar_camera)){
             camera.wait(lock); // Espera até que haja uma falha para inspecionar
@@ -374,6 +340,6 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
         shm->o_liga_camera = false;
         shm->e_inspecao = false;
-        
+        lock.unlock(); // Protocolo de saída
     }
 }
