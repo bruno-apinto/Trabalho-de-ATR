@@ -15,7 +15,7 @@
 
     % Logo UFMG
     \vspace*{1.5cm}
-    \includegraphics[width=4cm]{logo.png}
+    \includegraphics[width=4cm]{imagens/logo.png}
 
     \vspace{1.5cm}
 
@@ -26,7 +26,6 @@
     }
 
     \vfill
-
 
     % Título
     {\huge
@@ -78,12 +77,90 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 
 \section{Proposta de Arquitetura}
 
-Este trabalho tem como objetivo o desenvolvimento da arquitetura de um sistema embarcado para inspeção automática de túneis, utilizando conceitos de Automação em Tempo Real, programação concorrente e sincronização entre tarefas. O sistema proposto simula o funcionamento de um robô autônomo responsável por percorrer um túnel realizando medições da superfície do teto por meio de sensores simulados, como encoder e LIDAR, possibilitando a detecção de irregularidades estruturais.
+A arquitetura do trabalho foi realizada com o intuito de facilitar o máximo possível
+a aplicação dos conceitos, por isso a utilização máxima de threads. A partir dos requisitos mínimos,
+pelo menos 2 processos foram criados. Além, aproveita-se das threads originárias dos póprios
+processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura \ref{fig:arquitetura}.
 
-A implementação desenvolvida na primeira etapa do projeto concentra-se principalmente nas tarefas responsáveis pelo controle de navegação, cálculo de distância percorrida, reconstrução da superfície do túnel e coleta de dados. Para isso, foram utilizados processos e múltiplas threads em \texttt{C++}, além de mecanismos de sincronização como \texttt{mutex} e \texttt{condition\_variable}, garantindo acesso seguro aos buffers compartilhados e evitando condições de corrida durante a troca de informações entre produtor e consumidor.
+\begin{figure}[ht]
+  \includegraphics[ width= \linewidth]{imagens/arquitetura_threades_processos.png}
+  \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}\label{fig:arquitetura}
+\end{figure}
 
-Além da implementação dos buffers compartilhados, o projeto também realiza testes preliminares de sincronização e bloqueio, verificando situações de buffer vazio e buffer cheio. Esses testes permitem validar o comportamento concorrente do sistema e demonstrar a correta coordenação entre as tarefas executadas em paralelo, aspecto essencial em aplicações de tempo real.
+Ademais, para a comunicação e recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
+foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma "normal". %chktex 18
+E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
 
-Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para as próximas implementações do sistema completo, incluindo comunicação remota, interface gráfica de operação e integração com protocolos de comunicação.
+\section{Resultados de Testes Preliminares Realizados}
+
+\section{Conclusão}
+
+Na primeira etapa do trabalho foi desenvolvida a arquitetura inicial do sistema de inspeção automática de túneis, contemplando a implementação das principais tarefas concorrentes responsáveis pela navegação, reconstrução do teto, coleta de dados e inspeção por câmera. O sistema foi estruturado utilizando processos, múltiplas threads e mecanismos de comunicação e sincronização em \texttt{C++}, com foco na aplicação dos conceitos estudados na disciplina de Automação em Tempo Real.
+
+A comunicação entre processos foi realizada por meio de memória compartilhada, enquanto a troca de dados entre tarefas concorrentes foi organizada utilizando buffers compartilhados protegidos por \texttt{mutexes} e variáveis de condição. Para o \texttt{BUFFER\_NAVEGACAO}, foi implementada uma lógica de leitores e escritores utilizando meta-locking, permitindo múltiplas leituras simultâneas e garantindo exclusão mútua durante operações de escrita. Já o \texttt{BUFFER\_NIVEL} foi estruturado no modelo produtor-consumidor, controlando corretamente situações de buffer cheio e buffer vazio.
+
+Além da implementação da arquitetura básica do sistema, foram realizados diversos testes preliminares para validar o comportamento concorrente da aplicação. Os testes demonstraram que as tarefas conseguem trocar informações corretamente, que os mecanismos de sincronização evitam condições de corrida e que os eventos de acionamento da câmera são tratados adequadamente. Também foi validada a finalização controlada das threads e o correto funcionamento dos buffers compartilhados em diferentes cenários de execução.
+
+Os resultados obtidos até o momento indicam que a base estrutural do sistema está funcionando de forma coerente e atende aos objetivos definidos para a primeira etapa do projeto. Apesar disso, parte das funcionalidades ainda utiliza dados simulados e simplificações temporárias, principalmente relacionadas à física da navegação, ao processamento da câmera e à interface de operação remota.
+
+Como próximos passos, pretende-se concluir a integração completa da simulação física do robô e do túnel, implementar a comunicação remota via protocolo MQTT e desenvolver as interfaces gráficas de simulação e operação remota. Além disso, serão incorporados testes mais avançados de desempenho, tempo de resposta e escalonabilidade das tarefas, avaliando o comportamento do sistema sob diferentes cargas de processamento e frequências de execução. Também serão realizados testes adicionais de robustez e sincronização para validar o funcionamento do sistema completo em cenários mais próximos de uma aplicação real.
+
+\section{Apêndice}
+
+\subsection{includes.hpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../include/includes.hpp}
+
+\subsection{main.cpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../main.cpp}
+
+\subsection{sincronizacao.cpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../src/sincronizacao.cpp}
+
+\subsection{sincronizacao.hpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../include/sincronizacao.hpp}
+
+\subsection{shared\_memory.hpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../include/shared_memory.hpp}
+
+\subsection{operacao\_remota.cpp}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{cpp}{../src/operacao_remota.cpp}
+
+\subsection{Makefile}
+
+\inputminted[
+    linenos,
+    breaklines,
+    fontsize=\small
+]{make}{../Makefile}
 
 \end{document}
