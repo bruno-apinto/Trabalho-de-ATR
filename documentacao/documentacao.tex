@@ -78,12 +78,608 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 
 \section{Proposta de Arquitetura}
 
-Este trabalho tem como objetivo o desenvolvimento da arquitetura de um sistema embarcado para inspeção automática de túneis, utilizando conceitos de Automação em Tempo Real, programação concorrente e sincronização entre tarefas. O sistema proposto simula o funcionamento de um robô autônomo responsável por percorrer um túnel realizando medições da superfície do teto por meio de sensores simulados, como encoder e LIDAR, possibilitando a detecção de irregularidades estruturais.
+    A arquitetura do trabalho foi realizada com o intuito de facilitar o máximo possível
+    a aplicação dos conceitos, por isso a utilização máxima de threads. A partir dos requisitos mínimos,
+    pelo menos 2 processos foram criados. Além, aproveita-se das threads originárias dos póprios
+    processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura \ref{fig:arquitetura}.
+\begin{figure}[ht]
+  \includegraphics[ width= \linewidth]{imagens/arquitetura_threades_processos.png}
+  \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}\label{fig:arquitetura}
+\end{figure}
 
-A implementação desenvolvida na primeira etapa do projeto concentra-se principalmente nas tarefas responsáveis pelo controle de navegação, cálculo de distância percorrida, reconstrução da superfície do túnel e coleta de dados. Para isso, foram utilizados processos e múltiplas threads em \texttt{C++}, além de mecanismos de sincronização como \texttt{mutex} e \texttt{condition\_variable}, garantindo acesso seguro aos buffers compartilhados e evitando condições de corrida durante a troca de informações entre produtor e consumidor.
+Ademais, para a comunicação e recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
+ foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma "normal". %chktex 18
+  E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
 
-Além da implementação dos buffers compartilhados, o projeto também realiza testes preliminares de sincronização e bloqueio, verificando situações de buffer vazio e buffer cheio. Esses testes permitem validar o comportamento concorrente do sistema e demonstrar a correta coordenação entre as tarefas executadas em paralelo, aspecto essencial em aplicações de tempo real.
+\section{Resultados de Testes Preliminares Realizados}
 
-Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para as próximas implementações do sistema completo, incluindo comunicação remota, interface gráfica de operação e integração com protocolos de comunicação.
+Durante a fase de desenvolvimento da arquitetura do sistema, foram realizados testes preliminares para validar a implementação dos buffers compartilhados e a sincronização entre as tarefas que escrevem e leem nos buffers. Esses testes foram fundamentais para garantir que o sistema se comporta corretamente em diferentes condições do sistema, evitando, por exemplo, condições de corrida, inanição e garantindo a integridade dos dados e a execução e  finalização corretas de todas as partes já implementadas do código. 
+
+Os testes foram conduzidos com dados simulados, uma vez que a integração com a simulação gráfica, a interface de operação remota, a comunicação MQTT e demais mecanismos externos será realizada apenas na etapa posterior do projeto. Foram feitos testes de execução, de diferentes quantidades de falhas encontradas no caminho percorrido, casos onde o buffer estava vazio, garantindo que as tarefas consumidoras aguardavam corretamente até que os dados estivessem disponíveis, além de casos de bloqueio de leitores e escritores do buffer de navegação, garantindo a boa execução do meta-locking implementado, em que mais de uma thread pode ler o buffer, porém somente uma thread pode acessá-lo em caso de escrita. 
+
+Os resultados desses testes preliminares foram positivos, demonstrando que a implementação dos buffers compartilhados e a sincronização entre as tarefas estão funcionando conforme o esperado. Esses resultados fornecem uma base sólida para a próxima etapa do desenvolvimento do sistema, onde será finalizada a implementação do sistema.
+
+\subsection{Compilação e Execução Inicial}
+
+Inicialmente, foi validado o processo de compilação do programa por meio do arquivo \textit{Makefile}, que foi comprovada pela utilização de logs que imprimem mensagens indicando tarefas que foram realizadas. Durante a execução inicial, verificou-se a criação do processo associado ao comando de navegação, a escrita de comandos em memória compartilhada e a leitura desses comandos pelo processo principal. Foram observados valores coerentes para o comando de operação automática e para o setpoint de velocidade, indicando que a estrutura inicial de compartilhamento de informações foi inicializada corretamente.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/testeinicial.png}
+\end{figure}
+
+Em seguida, foram criadas as threads correspondentes às principais tarefas do sistema: cálculo de distância percorrida, inspeção por câmera, coletor de dados, reconstrução do teto e controle de navegação. A criação das threads foi acompanhada por mensagens de log, permitindo verificar a inicialização e execução das tarefas.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/threads.png}
+\end{figure}
+
+Após isso, foram impressos diversos logs da execução, que serão melhor explorados nos próximos testes.
+
+\subsection{Teste sem Detecção de Falhas}
+
+O primeiro teste funcional teve como objetivo verificar o comportamento do sistema sem que houvesse detecção de falhas na superfície do teto. Nesse caso, a tarefa de reconstrução do teto produziu números simulados de distância (que futuramente virão do LIDAR) para o \texttt{BUFFER\_NIVEL}, enquanto o coletor de dados realizou a leitura dessas informações.
+
+Durante a execução, observou-se que não houve acionamento indevido da câmera nem redução de velocidade associada à inspeção, o que indica que a lógica de falha permaneceu inativa durante o teste. Ao final da execução, todas as threads foram finalizadas corretamente e os buffers finais foram impressos, demonstrando que a ausência de falhas não provocou bloqueio permanente no sistema.
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{text}
+aninhamelado@MacBook-Air-de-Ana-4 Trabalho-de-ATR % make run
+./programa
+[17:51:45] [PROCESSO] Processo comando_navegacao criado
+Comando de navegação escreveu na memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+Controle de navegação lendo memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+[17:51:45] [MAIN] Buffers inicializados
+[17:51:45] [MAIN] Criando thread distancia_percorrida
+[17:51:45] [MAIN] Criando thread inspecao_camera
+[17:51:45] [MAIN] Criando thread coletor_dados
+[17:51:45] [MAIN] Criando thread reconstrucao_teto
+[17:51:45] [MAIN] Criando thread controle_navegacao
+[17:51:45] [MAIN] Esperando thread 0
+[17:51:45] [COLETOR] Thread inicializada
+[17:51:45] [RECONSTRUCAO] Thread inicializada
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [CONTROLE] Posição lida (navegação): 0.000000
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 10.782785
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 11.484781
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 26.471970
+[17:51:45] [COLETOR] Posição lida (nível): 10.782785
+[17:51:45] [COLETOR] Posição lida (nível): 11.484781
+[17:51:45] [COLETOR] Posição lida (nível): 26.471970
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 39.097961
+[17:51:45] [COLETOR] Posição lida (nível): 39.097961
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 68.813644
+[17:51:45] [COLETOR] Posição lida (nível): 68.813644
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 64.550240
+[17:51:45] [COLETOR] Posição lida (nível): 64.550240
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 58.606701
+[17:51:45] [COLETOR] Posição lida (nível): 58.606701
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 59.807774
+[17:51:45] [COLETOR] Posição lida (nível): 59.807774
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 63.561176
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 41.966251
+[17:51:45] [COLETOR] Posição lida (nível): 63.561176
+[17:51:45] [COLETOR] Posição lida (nível): 41.966251
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 53.831238
+[17:51:45] [COLETOR] Posição lida (nível): 53.831238
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 69.043571
+[17:51:45] [COLETOR] Posição lida (nível): 69.043571
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 32.942486
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 31.726030
+[17:51:45] [COLETOR] Posição lida (nível): 32.942486
+[17:51:45] [COLETOR] Posição lida (nível): 31.726030
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 96.737633
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 42.435276
+[17:51:45] [COLETOR] Posição lida (nível): 96.737633
+[17:51:45] [COLETOR] Posição lida (nível): 42.435276
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 53.318428
+[17:51:45] [COLETOR] Posição lida (nível): 53.318428
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 43.819653
+[17:51:45] [COLETOR] Posição lida (nível): 43.819653
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 86.956482
+[17:51:45] [COLETOR] Posição lida (nível): 86.956482
+[17:51:45] [COLETOR] Buffer vazio -> aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 38.257179
+[17:51:45] [RECONSTRUCAO] Thread finalizada
+[17:51:45] [COLETOR] Posição lida (nível): 38.257179
+[17:51:46] [DISTANCIA] Posição escrita (navegação): 28.958828
+[17:51:47] [CONTROLE] Posição lida (navegação): 0.000000
+[17:51:47] [DISTANCIA] Posição escrita (navegação): 93.278160
+[17:51:48] [DISTANCIA] Posição escrita (navegação): 5.549335
+[17:51:49] [CONTROLE] Posição lida (navegação): 5.549335
+[17:51:49] [DISTANCIA] Posição escrita (navegação): 59.613941
+[17:51:50] [DISTANCIA] Posição escrita (navegação): 5.053784
+[17:51:51] [CONTROLE] Posição lida (navegação): 59.613941
+[17:51:51] [DISTANCIA] Posição escrita (navegação): 96.715065
+[17:51:52] [DISTANCIA] Posição escrita (navegação): 24.145536
+[17:51:53] [CONTROLE] Posição lida (navegação): 5.053784
+[17:51:53] [DISTANCIA] Posição escrita (navegação): 98.272110
+[17:51:54] [DISTANCIA] Posição escrita (navegação): 64.581703
+[17:51:55] [CONTROLE] Posição lida (navegação): 96.715065
+[17:51:56] [DISTANCIA] Posição escrita (navegação): 60.326897
+[17:51:57] [DISTANCIA] Posição escrita (navegação): 94.607086
+[17:51:57] [CONTROLE] Posição lida (navegação): 24.145536
+[17:51:58] [DISTANCIA] Posição escrita (navegação): 63.498756
+[17:51:59] [DISTANCIA] Posição escrita (navegação): 72.532227
+[17:51:59] [CONTROLE] Posição lida (navegação): 98.272110
+[17:52:00] [DISTANCIA] Posição escrita (navegação): 8.689487
+[17:52:01] [DISTANCIA] Posição escrita (navegação): 33.802132
+[17:52:01] [CONTROLE] Posição lida (navegação): 64.581703
+[17:52:02] [DISTANCIA] Posição escrita (navegação): 65.608650
+[17:52:03] [DISTANCIA] Posição escrita (navegação): 84.797623
+[17:52:03] [CONTROLE] Posição lida (navegação): 60.326897
+[17:52:04] [DISTANCIA] Posição escrita (navegação): 97.202446
+[17:52:05] [DISTANCIA] Posição escrita (navegação): 57.833843
+[17:52:06] [CONTROLE] Posição lida (navegação): 94.607086
+[17:52:06] [DISTANCIA] Posição escrita (navegação): 1.694813
+[17:52:06] [MAIN] Thread 0 finalizada
+[17:52:06] [MAIN] Esperando thread 1
+[17:52:06] [MAIN] Thread 1 finalizada
+[17:52:06] [MAIN] Esperando thread 2
+[17:52:06] [MAIN] Thread 2 finalizada
+[17:52:06] [MAIN] Esperando thread 3
+[17:52:06] [MAIN] Thread 3 finalizada
+[17:52:06] [MAIN] Esperando thread 4
+[17:52:08] [CONTROLE] Posição lida (navegação): 63.498756
+[17:52:10] [CONTROLE] Posição lida (navegação): 72.532227
+[17:52:12] [CONTROLE] Posição lida (navegação): 8.689487
+[17:52:14] [CONTROLE] Posição lida (navegação): 33.802132
+[17:52:16] [CONTROLE] Posição lida (navegação): 65.608650
+[17:52:18] [CONTROLE] Posição lida (navegação): 84.797623
+[17:52:20] [CONTROLE] Posição lida (navegação): 97.202446
+[17:52:22] [CONTROLE] Posição lida (navegação): 57.833843
+[17:52:24] [CONTROLE] Posição lida (navegação): 1.694813
+[17:52:26] [MAIN] Thread 4 finalizada
+Buffer navegação: 94.6071 63.4988 72.5322 8.68949 33.8021 65.6087 84.7976 97.2024 57.8338 1.69481 
+Buffer nível: 53.8312 69.0436 32.9425 31.726 96.7376 42.4353 53.3184 43.8197 86.9565 38.2572 
+[17:52:26] [MAIN] Execução finalizada
+\end{minted}
+
+\subsection{Teste com uma Falha Detectada}
+
+Esse teste teve como objetivo validar o comportamento do sistema diante da detecção de uma única falha na superfície do teto. Para isso, a lógica de detecção da tarefa de reconstrução foi configurada para gerar um evento de falha em apenas uma iteração durante toda a execução.
+
+Durante o teste foi registrada a detecção de falha em um único instante da execução, seguida do acionamento lógico da câmera e da redução do setpoint de velocidade. Após o tratamento do evento, a execução prosseguiu normalmente.
+
+Ao final, todas as threads foram encerradas sem travamentos, indicando que o sistema foi capaz de tratar uma falha isolada sem comprometer a execução das demais tarefas.
+
+Além disso, foi possível verificar a tarefa de inspeção por câmera a partir da geração de eventos de falha pela tarefa de reconstrução do teto. Verificou-se que a câmera não executava atividades enquanto não havia falhas detectadas. Quando uma falha foi simulada, a reconstrução incrementou o contador de eventos de câmera, atualizou os estados compartilhados e notificou a variável de condição associada à inspeção.
+
+Durante os testes, foram registradas mensagens indicando o início e a finalização da inspeção por câmera. Esse comportamento confirmou que a thread da câmera foi corretamente desbloqueada diante de eventos de falha e que retornou ao estado inativo após o processamento.
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{text}
+aninhamelado@MacBook-Air-de-Ana-4 Trabalho-de-ATR % make run  
+./programa
+[18:15:56] [PROCESSO] Processo comando_navegacao criado
+Comando de navegação escreveu na memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+Controle de navegação lendo memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+[18:15:56] [MAIN] Buffers inicializados
+[18:15:56] [MAIN] Criando thread distancia_percorrida
+[18:15:56] [MAIN] Criando thread inspecao_camera
+[18:15:56] [MAIN] Criando thread coletor_dados
+[18:15:56] [MAIN] Criando thread reconstrucao_teto
+[18:15:56] [COLETOR] Thread inicializada
+[18:15:56] [RECONSTRUCAO] Thread inicializada
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [MAIN] Criando thread controle_navegacao
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 74.495483
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 42.898727
+[18:15:56] [CONTROLE] Posição lida (navegação): 0.000000
+[18:15:56] [MAIN] Esperando thread 0
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 34.575493
+[18:15:56] [COLETOR] Posição lida (nível): 74.495483
+[18:15:56] [COLETOR] Posição lida (nível): 42.898727
+[18:15:56] [COLETOR] Posição lida (nível): 34.575493
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 98.192505
+[18:15:56] [COLETOR] Posição lida (nível): 98.192505
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 15.192101
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 73.814850
+[18:15:56] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:15:56] [COLETOR] Posição lida (nível): 15.192101
+[18:15:56] [COLETOR] Posição lida (nível): 73.814850
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 97.350990
+[18:15:56] [CAMERA] Inspeção iniciada
+[18:15:56] [CAMERA] Inspeção finalizada
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 55.099091
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 48.265957
+[18:15:56] [COLETOR] Posição lida (nível): 97.350990
+[18:15:56] [COLETOR] Posição lida (nível): 55.099091
+[18:15:56] [COLETOR] Posição lida (nível): 48.265957
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 30.761057
+[18:15:56] [COLETOR] Posição lida (nível): 30.761057
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 49.804440
+[18:15:56] [COLETOR] Posição lida (nível): 49.804440
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 46.795132
+[18:15:56] [COLETOR] Posição lida (nível): 46.795132
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 12.473819
+[18:15:56] [COLETOR] Posição lida (nível): 12.473819
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 68.368179
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 34.957470
+[18:15:56] [COLETOR] Posição lida (nível): 68.368179
+[18:15:56] [COLETOR] Posição lida (nível): 34.957470
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 90.110184
+[18:15:56] [COLETOR] Posição lida (nível): 90.110184
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 39.241226
+[18:15:56] [COLETOR] Posição lida (nível): 39.241226
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 31.790064
+[18:15:56] [COLETOR] Posição lida (nível): 31.790064
+[18:15:56] [COLETOR] Buffer vazio -> aguardando dados
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 93.427567
+[18:15:56] [RECONSTRUCAO] Posição escrita (nível): 61.848675
+[18:15:56] [RECONSTRUCAO] Thread finalizada
+[18:15:56] [COLETOR] Posição lida (nível): 93.427567
+[18:15:56] [COLETOR] Posição lida (nível): 61.848675
+[18:15:57] [DISTANCIA] Posição escrita (navegação): 62.380260
+[18:15:58] [CONTROLE] Posição lida (navegação): 0.000000
+[18:15:58] [DISTANCIA] Posição escrita (navegação): 51.585777
+[18:15:59] [DISTANCIA] Posição escrita (navegação): 62.972610
+[18:16:00] [CONTROLE] Posição lida (navegação): 62.972610
+[18:16:00] [DISTANCIA] Posição escrita (navegação): 65.160225
+[18:16:01] [DISTANCIA] Posição escrita (navegação): 31.197983
+[18:16:02] [CONTROLE] Posição lida (navegação): 65.160225
+[18:16:02] [DISTANCIA] Posição escrita (navegação): 45.259418
+[18:16:03] [DISTANCIA] Posição escrita (navegação): 81.480118
+[18:16:04] [CONTROLE] Posição lida (navegação): 31.197983
+[18:16:04] [DISTANCIA] Posição escrita (navegação): 19.269875
+[18:16:05] [DISTANCIA] Posição escrita (navegação): 17.381445
+[18:16:06] [CONTROLE] Posição lida (navegação): 45.259418
+[18:16:06] [DISTANCIA] Posição escrita (navegação): 43.342255
+[18:16:07] [DISTANCIA] Posição escrita (navegação): 1.306038
+[18:16:08] [CONTROLE] Posição lida (navegação): 81.480118
+[18:16:08] [DISTANCIA] Posição escrita (navegação): 12.224937
+[18:16:09] [DISTANCIA] Posição escrita (navegação): 75.290260
+[18:16:10] [CONTROLE] Posição lida (navegação): 19.269875
+[18:16:10] [DISTANCIA] Posição escrita (navegação): 55.725075
+[18:16:11] [DISTANCIA] Posição escrita (navegação): 83.067741
+[18:16:12] [CONTROLE] Posição lida (navegação): 17.381445
+[18:16:12] [DISTANCIA] Posição escrita (navegação): 20.277987
+[18:16:13] [DISTANCIA] Posição escrita (navegação): 60.572338
+[18:16:14] [CONTROLE] Posição lida (navegação): 43.342255
+[18:16:14] [DISTANCIA] Posição escrita (navegação): 44.572971
+[18:16:15] [DISTANCIA] Posição escrita (navegação): 38.374176
+[18:16:16] [CONTROLE] Posição lida (navegação): 1.306038
+[18:16:16] [DISTANCIA] Posição escrita (navegação): 34.950138
+[18:16:16] [MAIN] Thread 0 finalizada
+[18:16:16] [MAIN] Esperando thread 1
+[18:16:16] [MAIN] Thread 1 finalizada
+[18:16:16] [MAIN] Esperando thread 2
+[18:16:16] [MAIN] Thread 2 finalizada
+[18:16:16] [MAIN] Esperando thread 3
+[18:16:16] [MAIN] Thread 3 finalizada
+[18:16:16] [MAIN] Esperando thread 4
+[18:16:18] [CONTROLE] Posição lida (navegação): 12.224937
+[18:16:20] [CONTROLE] Posição lida (navegação): 75.290260
+[18:16:22] [CONTROLE] Posição lida (navegação): 55.725075
+[18:16:24] [CONTROLE] Posição lida (navegação): 83.067741
+[18:16:26] [CONTROLE] Posição lida (navegação): 20.277987
+[18:16:28] [CONTROLE] Posição lida (navegação): 60.572338
+[18:16:30] [CONTROLE] Posição lida (navegação): 44.572971
+[18:16:32] [CONTROLE] Posição lida (navegação): 38.374176
+[18:16:34] [CONTROLE] Posição lida (navegação): 34.950138
+[18:16:36] [MAIN] Thread 4 finalizada
+Buffer navegação: 1.30604 12.2249 75.2903 55.7251 83.0677 20.278 60.5723 44.573 38.3742 34.9501 
+Buffer nível: 49.8044 46.7951 12.4738 68.3682 34.9575 90.1102 39.2412 31.7901 93.4276 61.8487 
+[18:16:36] [MAIN] Execução finalizada
+\end{minted}
+
+\subsection{Teste com Múltiplas Falhas}
+
+Outro teste realizado foi o de múltiplas falhas, no qual a tarefa de reconstrução do teto foi configurada para simular a detecção de falha em todas as iterações. O objetivo desse teste foi verificar se o sistema seria capaz de lidar com acionamentos sucessivos da lógica de inspeção.
+
+Durante a execução, foram registradas múltiplas mensagens de falha detectada, cada uma associada ao acionamento lógico da câmera e à redução do setpoint de velocidade. Mesmo com sucessivos eventos de inspeção, o sistema continuou realizando a escrita e leitura dos dados no buffer de nível sem apresentar erros.
+
+Esse teste permitiu validar o funcionamento da câmera sem perdas de eventos quando múltiplas falhas são detectadas em sequência. Ao final da execução, a thread de reconstrução foi finalizada, a thread de câmera encerrou corretamente e todas as demais tarefas concluíram sua execução. Dessa forma, o teste indicou que o sistema é capaz de tratar múltiplos eventos de falha sem bloqueio permanente.
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{text}
+aninhamelado@MacBook-Air-de-Ana-4 Trabalho-de-ATR % make run  
+./programa
+[18:14:34] [PROCESSO] Processo comando_navegacao criado
+Comando de navegação escreveu na memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+Controle de navegação lendo memória compartilhada:
+c_automatico = 1
+j_sp_velocidade = 50
+[18:14:34] [MAIN] Buffers inicializados
+[18:14:34] [MAIN] Criando thread distancia_percorrida
+[18:14:34] [MAIN] Criando thread inspecao_camera
+[18:14:34] [MAIN] Criando thread coletor_dados
+[18:14:34] [MAIN] Criando thread reconstrucao_teto
+[18:14:34] [COLETOR] Thread inicializada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Thread inicializada
+[18:14:34] [MAIN] Criando thread controle_navegacao
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 11.893382
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [MAIN] Esperando thread 0
+[18:14:34] [COLETOR] Posição lida (nível): 11.893382
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CONTROLE] Posição lida (navegação): 0.000000
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 33.125107
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 33.125107
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 70.220352
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 70.220352
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 38.717987
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 38.717987
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 89.701645
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 89.701645
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 17.111982
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 17.111982
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 85.353203
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 85.353203
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 42.381588
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Posição lida (nível): 42.381588
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 18.459126
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 18.459126
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 78.904755
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 78.904755
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 46.468765
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 46.468765
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 68.231094
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 68.231094
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 70.282280
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 70.282280
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 47.991817
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 47.991817
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 55.565323
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 55.565323
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 76.516632
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 76.516632
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 59.348728
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 59.348728
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 8.146796
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 8.146796
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 68.844254
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 68.844254
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:34] [COLETOR] Buffer vazio -> aguardando dados
+[18:14:34] [RECONSTRUCAO] Posição escrita (nível): 26.924643
+[18:14:34] [RECONSTRUCAO] Falha detectada -> câmera acionada e velocidade reduzida
+[18:14:34] [COLETOR] Posição lida (nível): 26.924643
+[18:14:34] [RECONSTRUCAO] Thread finalizada
+[18:14:34] [CAMERA] Inspeção iniciada
+[18:14:34] [CAMERA] Inspeção finalizada
+[18:14:35] [DISTANCIA] Posição escrita (navegação): 93.736534
+[18:14:36] [DISTANCIA] Escritor aguardando acesso ao buffer navegacao
+[18:14:36] [CONTROLE] Posição lida (navegação): 0.000000
+[18:14:36] [DISTANCIA] Escritor retomou execução
+[18:14:36] [DISTANCIA] Posição escrita (navegação): 80.958572
+[18:14:37] [DISTANCIA] Posição escrita (navegação): 35.029560
+[18:14:38] [CONTROLE] Posição lida (navegação): 35.029560
+[18:14:38] [DISTANCIA] Posição escrita (navegação): 91.344322
+[18:14:39] [DISTANCIA] Posição escrita (navegação): 96.001343
+[18:14:40] [CONTROLE] Posição lida (navegação): 91.344322
+[18:14:40] [DISTANCIA] Posição escrita (navegação): 11.806067
+[18:14:41] [DISTANCIA] Posição escrita (navegação): 73.489479
+[18:14:42] [CONTROLE] Posição lida (navegação): 96.001343
+[18:14:42] [DISTANCIA] Posição escrita (navegação): 10.448226
+[18:14:43] [DISTANCIA] Posição escrita (navegação): 62.412590
+[18:14:44] [CONTROLE] Posição lida (navegação): 11.806067
+[18:14:44] [DISTANCIA] Posição escrita (navegação): 64.524155
+[18:14:45] [DISTANCIA] Posição escrita (navegação): 19.370922
+[18:14:46] [CONTROLE] Posição lida (navegação): 73.489479
+[18:14:46] [DISTANCIA] Posição escrita (navegação): 46.210743
+[18:14:47] [DISTANCIA] Posição escrita (navegação): 97.758255
+[18:14:48] [CONTROLE] Posição lida (navegação): 10.448226
+[18:14:48] [DISTANCIA] Posição escrita (navegação): 80.271263
+[18:14:49] [DISTANCIA] Posição escrita (navegação): 34.450363
+[18:14:50] [CONTROLE] Posição lida (navegação): 62.412590
+[18:14:50] [DISTANCIA] Posição escrita (navegação): 30.559107
+[18:14:51] [DISTANCIA] Posição escrita (navegação): 68.277695
+[18:14:52] [CONTROLE] Posição lida (navegação): 64.524155
+[18:14:52] [DISTANCIA] Posição escrita (navegação): 99.241768
+[18:14:53] [DISTANCIA] Posição escrita (navegação): 39.216423
+[18:14:54] [CONTROLE] Posição lida (navegação): 19.370922
+[18:14:54] [DISTANCIA] Posição escrita (navegação): 28.282803
+[18:14:54] [MAIN] Thread 0 finalizada
+[18:14:54] [MAIN] Esperando thread 1
+[18:14:54] [MAIN] Thread 1 finalizada
+[18:14:54] [MAIN] Esperando thread 2
+[18:14:54] [MAIN] Thread 2 finalizada
+[18:14:54] [MAIN] Esperando thread 3
+[18:14:54] [MAIN] Thread 3 finalizada
+[18:14:54] [MAIN] Esperando thread 4
+[18:14:56] [CONTROLE] Posição lida (navegação): 46.210743
+[18:14:58] [CONTROLE] Posição lida (navegação): 97.758255
+[18:15:00] [CONTROLE] Posição lida (navegação): 80.271263
+[18:15:02] [CONTROLE] Posição lida (navegação): 34.450363
+[18:15:04] [CONTROLE] Posição lida (navegação): 30.559107
+[18:15:06] [CONTROLE] Posição lida (navegação): 68.277695
+[18:15:08] [CONTROLE] Posição lida (navegação): 99.241768
+[18:15:10] [CONTROLE] Posição lida (navegação): 39.216423
+[18:15:12] [CONTROLE] Posição lida (navegação): 28.282803
+[18:15:14] [MAIN] Thread 4 finalizada
+Buffer navegação: 19.3709 46.2107 97.7583 80.2713 34.4504 30.5591 68.2777 99.2418 39.2164 28.2828 
+Buffer nível: 46.4688 68.2311 70.2823 47.9918 55.5653 76.5166 59.3487 8.1468 68.8443 26.9246 
+[18:15:14] [MAIN] Execução finalizada
+\end{minted}
+
+
+\subsection{Teste de Buffer de Nível Vazio}
+
+O teste de buffer de nível vazio teve como objetivo verificar se uma tarefa consumidora permanece bloqueada quando não há dados disponíveis para leitura. Esse comportamento foi observado na tarefa coletora de dados, responsável por consumir informações do \texttt{BUFFER\_NIVEL}.
+
+Durante a execução, o coletor registrou mensagens indicando que o buffer estava vazio e permaneceu aguardando a chegada de novos dados. Após a tarefa de reconstrução do teto escrever um novo dado e notificar a variável de condição correspondente, o coletor retomou a execução e realizou a leitura do dado disponível.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/vazio.png}
+\end{figure}
+
+Esse comportamento demonstra que o consumidor não realiza leituras inválidas quando o buffer está vazio. Em vez disso, a thread permanece bloqueada, sem espera ativa, até que o produtor disponibilize uma nova amostra. Assim, o teste validou o tratamento correto da condição de buffer vazio.
+
+\subsection{Teste de Buffer de Nível Cheio}
+
+O teste de buffer de nível cheio foi realizado com o objetivo de verificar se a tarefa produtora é corretamente bloqueada quando o buffer atinge sua capacidade máxima. Para isso, a tarefa de reconstrução do teto foi configurada para produzir dados em uma taxa superior à taxa de consumo do coletor de dados.
+
+Durante a execução, o \texttt{BUFFER\_NIVEL} foi sendo ocupado a cada iteração até atingir sua capacidade máxima. Nesse momento, a tarefa de reconstrução registrou a condição de buffer cheio e permaneceu bloqueada aguardando a liberação de espaço.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/cheio.png}
+\end{figure}
+
+Quando o coletor de dados consumiu as amostras (como a execução é muito rápida, na figura todas foram consumidas antes da sinalização), a tarefa de reconstrução foi notificada e retomou a escrita no buffer. Esse comportamento confirma que o produtor não sobrescreve dados quando o buffer está cheio, permanecendo em espera até que o consumidor libere espaço. Assim, a lógica produtor-consumidor implementada para o buffer de nível foi validada.
+
+\subsection{Teste de Bloqueio de Leitores e Escritores}
+
+Foi realizado também um teste específico para o \texttt{BUFFER\_NAVEGACAO}, cujo acesso é controlado por uma lógica de leitores e escritores usando meta-locking. Esse buffer é escrito pela tarefa de cálculo de distância percorrida e lido pelas tarefas de controle de navegação e reconstrução do teto.
+
+Para validar o mecanismo de sincronização, foram introduzidos atrasos artificiais nas regiões críticas de leitura e escrita. Inicialmente, a tarefa de distância percorrida manteve o lock de escrita com o escritor por um intervalo maior, fazendo com que as tarefas leitoras aguardassem a liberação do recurso. Os logs indicaram que tanto a reconstrução do teto quanto o controle de navegação permaneceram bloqueados enquanto havia um escritor ativo.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/escritordemora.png}
+\end{figure}
+
+Em seguida, observou-se também a situação inversa: a tarefa escritora aguardou a liberação do buffer enquanto existiam leitores ativos que foram colocados para dormir propositalmente, levando ao atraso da liberação do lock. Após a finalização das leituras, o escritor retomou a execução e realizou a escrita no buffer.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/leitordemora.png}
+\end{figure}
+
+Esse teste demonstrou que a lógica de meta-locking implementada no \texttt{BUFFER\_NAVEGACAO} impede leituras durante uma escrita ativa e impede escritas enquanto há leitores ativos. Dessa forma, foi validada a exclusão adequada entre leitores e escritores, reduzindo o risco de inconsistências no acesso ao buffer compartilhado.
+
+\subsection{Teste de Finalização das Threads}
+
+Outro aspecto avaliado foi a finalização controlada das threads. Durante os testes iniciais, observou-se que algumas threads poderiam permanecer bloqueadas indefinidamente caso ficassem aguardando eventos que não seriam mais produzidos, causando deadlock. Esse comportamento foi corrigido por meio da inclusão de flags de finalização e notificações adicionais ao término das tarefas produtoras.
+
+Nos testes finais, a função principal conseguiu aguardar a finalização de todas as threads por meio de \texttt{join()}. Foram registradas mensagens indicando a conclusão das threads de distância percorrida, inspeção por câmera, coletor de dados, reconstrução do teto e controle de navegação, seguida da impressão dos valores escritos em cada buffer e da finalização do sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/final.png}
+\end{figure}
+
+A thread de controle de navegação permaneceu ativa por mais tempo devido a atrasos artificiais inseridos para simular um consumidor mais lento, mas finalizou corretamente ao término de suas iterações. Dessa forma, foi validado que o sistema encerra de maneira controlada, sem a necessidade de interrupção manual, já que todas as tarefas possuem uma condição de término definida.
+
+\subsection{Considerações Finais dos Testes}
+
+De forma geral, os testes preliminares indicaram que a implementação atual atende aos objetivos definidos para a primeira etapa do projeto. Foram validadas a criação das tarefas concorrentes, a comunicação por buffers, a sincronização por mutexes e variáveis de condição, o bloqueio correto em situações de buffer cheio e vazio, o controle de leitores e escritores no buffer de navegação, o acionamento da câmera por evento simulado e a finalização controlada das threads.
+
+Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte, na qual serão incorporadas as interfaces de operação remota, simulação física, comunicação MQTT e testes de tempo de resposta, escalonabilidade e a finalização do programa.
+
+\section{Conclusão}
+
+\section{Apêndice}
+\section{Exemplo de Código}
+
+\begin{minted}[
+    linenos,
+    breaklines,
+    frame=lines,
+    fontsize=\small
+]{cpp}
+#include <iostream>
+
+int main() {
+    std::cout << "Olá mundo!" << std::endl;
+    return 0;
+}
+\end{minted}
 
 \end{document}
