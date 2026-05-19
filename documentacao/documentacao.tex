@@ -1,6 +1,6 @@
 \documentclass[12pt]{article}
 
-\usepackage{identfirst}
+\usepackage{indentfirst}
 \usepackage[brazil]{babel}
 \usepackage[a4paper,margin=2.5cm]{geometry}
 \usepackage{graphicx}
@@ -90,6 +90,11 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 Ademais, para a comunicação e para os recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
  foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma mais simples, usando wait e signal diretamente, visando simplificar a implementação do meta-locking, com condições complexas de acesso ao recurso compartilhado. %chktex 18
   E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
+
+A implementação dos buffers compartilhados foi realizada por meio de \texttt{std::vector<float>} e operações módulo (\texttt{idx \% ELEMENTOS\_BUFFER}). 
+Dessa forma, garante-se a condição circular por meio do próprio tratamento da biblioteca \texttt{vector} e da aritmética simples. 
+Foi escolhido o tipo \texttt{float}, pois trata-se de fenômenos físicos como velocidade e posição. Por fim, 
+os buffers possuem tamanho inicial de 10 elementos (\texttt{ELEMENTOS\_BUFFER}), o que se mostra um valor razoável para ações em tempo real.
 
 \subsection{Escolha da sincronização}
 

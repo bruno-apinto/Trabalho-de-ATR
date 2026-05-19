@@ -1,0 +1,130 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+    TESTE SEM DETECÇÃO DE FALHAS
+
+aninhamelado@MacBook\PYGZhy{}Air\PYGZhy{}de\PYGZhy{}Ana\PYGZhy{}4 Trabalho\PYGZhy{}de\PYGZhy{}ATR \PYGZpc{} make run
+./programa
+[17:51:45] [PROCESSO] Processo comando\PYGZus{}navegacao criado
+Comando de navegação escreveu na memória compartilhada:
+c\PYGZus{}automatico = 1
+j\PYGZus{}sp\PYGZus{}velocidade = 50
+Controle de navegação lendo memória compartilhada:
+c\PYGZus{}automatico = 1
+j\PYGZus{}sp\PYGZus{}velocidade = 50
+[17:51:45] [MAIN] Buffers inicializados
+[17:51:45] [MAIN] Criando thread distancia\PYGZus{}percorrida
+[17:51:45] [MAIN] Criando thread inspecao\PYGZus{}camera
+[17:51:45] [MAIN] Criando thread coletor\PYGZus{}dados
+[17:51:45] [MAIN] Criando thread reconstrucao\PYGZus{}teto
+[17:51:45] [MAIN] Criando thread controle\PYGZus{}navegacao
+[17:51:45] [MAIN] Esperando thread 0
+[17:51:45] [COLETOR] Thread inicializada
+[17:51:45] [RECONSTRUCAO] Thread inicializada
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [CONTROLE] Posição lida (navegação): 0.000000
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 10.782785
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 11.484781
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 26.471970
+[17:51:45] [COLETOR] Posição lida (nível): 10.782785
+[17:51:45] [COLETOR] Posição lida (nível): 11.484781
+[17:51:45] [COLETOR] Posição lida (nível): 26.471970
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 39.097961
+[17:51:45] [COLETOR] Posição lida (nível): 39.097961
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 68.813644
+[17:51:45] [COLETOR] Posição lida (nível): 68.813644
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 64.550240
+[17:51:45] [COLETOR] Posição lida (nível): 64.550240
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 58.606701
+[17:51:45] [COLETOR] Posição lida (nível): 58.606701
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 59.807774
+[17:51:45] [COLETOR] Posição lida (nível): 59.807774
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 63.561176
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 41.966251
+[17:51:45] [COLETOR] Posição lida (nível): 63.561176
+[17:51:45] [COLETOR] Posição lida (nível): 41.966251
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 53.831238
+[17:51:45] [COLETOR] Posição lida (nível): 53.831238
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 69.043571
+[17:51:45] [COLETOR] Posição lida (nível): 69.043571
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 32.942486
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 31.726030
+[17:51:45] [COLETOR] Posição lida (nível): 32.942486
+[17:51:45] [COLETOR] Posição lida (nível): 31.726030
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 96.737633
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 42.435276
+[17:51:45] [COLETOR] Posição lida (nível): 96.737633
+[17:51:45] [COLETOR] Posição lida (nível): 42.435276
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 53.318428
+[17:51:45] [COLETOR] Posição lida (nível): 53.318428
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 43.819653
+[17:51:45] [COLETOR] Posição lida (nível): 43.819653
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 86.956482
+[17:51:45] [COLETOR] Posição lida (nível): 86.956482
+[17:51:45] [COLETOR] Buffer vazio \PYGZhy{}\PYGZgt{} aguardando dados
+[17:51:45] [RECONSTRUCAO] Posição escrita (nível): 38.257179
+[17:51:45] [RECONSTRUCAO] Thread finalizada
+[17:51:45] [COLETOR] Posição lida (nível): 38.257179
+[17:51:46] [DISTANCIA] Posição escrita (navegação): 28.958828
+[17:51:47] [CONTROLE] Posição lida (navegação): 0.000000
+[17:51:47] [DISTANCIA] Posição escrita (navegação): 93.278160
+[17:51:48] [DISTANCIA] Posição escrita (navegação): 5.549335
+[17:51:49] [CONTROLE] Posição lida (navegação): 5.549335
+[17:51:49] [DISTANCIA] Posição escrita (navegação): 59.613941
+[17:51:50] [DISTANCIA] Posição escrita (navegação): 5.053784
+[17:51:51] [CONTROLE] Posição lida (navegação): 59.613941
+[17:51:51] [DISTANCIA] Posição escrita (navegação): 96.715065
+[17:51:52] [DISTANCIA] Posição escrita (navegação): 24.145536
+[17:51:53] [CONTROLE] Posição lida (navegação): 5.053784
+[17:51:53] [DISTANCIA] Posição escrita (navegação): 98.272110
+[17:51:54] [DISTANCIA] Posição escrita (navegação): 64.581703
+[17:51:55] [CONTROLE] Posição lida (navegação): 96.715065
+[17:51:56] [DISTANCIA] Posição escrita (navegação): 60.326897
+[17:51:57] [DISTANCIA] Posição escrita (navegação): 94.607086
+[17:51:57] [CONTROLE] Posição lida (navegação): 24.145536
+[17:51:58] [DISTANCIA] Posição escrita (navegação): 63.498756
+[17:51:59] [DISTANCIA] Posição escrita (navegação): 72.532227
+[17:51:59] [CONTROLE] Posição lida (navegação): 98.272110
+[17:52:00] [DISTANCIA] Posição escrita (navegação): 8.689487
+[17:52:01] [DISTANCIA] Posição escrita (navegação): 33.802132
+[17:52:01] [CONTROLE] Posição lida (navegação): 64.581703
+[17:52:02] [DISTANCIA] Posição escrita (navegação): 65.608650
+[17:52:03] [DISTANCIA] Posição escrita (navegação): 84.797623
+[17:52:03] [CONTROLE] Posição lida (navegação): 60.326897
+[17:52:04] [DISTANCIA] Posição escrita (navegação): 97.202446
+[17:52:05] [DISTANCIA] Posição escrita (navegação): 57.833843
+[17:52:06] [CONTROLE] Posição lida (navegação): 94.607086
+[17:52:06] [DISTANCIA] Posição escrita (navegação): 1.694813
+[17:52:06] [MAIN] Thread 0 finalizada
+[17:52:06] [MAIN] Esperando thread 1
+[17:52:06] [MAIN] Thread 1 finalizada
+[17:52:06] [MAIN] Esperando thread 2
+[17:52:06] [MAIN] Thread 2 finalizada
+[17:52:06] [MAIN] Esperando thread 3
+[17:52:06] [MAIN] Thread 3 finalizada
+[17:52:06] [MAIN] Esperando thread 4
+[17:52:08] [CONTROLE] Posição lida (navegação): 63.498756
+[17:52:10] [CONTROLE] Posição lida (navegação): 72.532227
+[17:52:12] [CONTROLE] Posição lida (navegação): 8.689487
+[17:52:14] [CONTROLE] Posição lida (navegação): 33.802132
+[17:52:16] [CONTROLE] Posição lida (navegação): 65.608650
+[17:52:18] [CONTROLE] Posição lida (navegação): 84.797623
+[17:52:20] [CONTROLE] Posição lida (navegação): 97.202446
+[17:52:22] [CONTROLE] Posição lida (navegação): 57.833843
+[17:52:24] [CONTROLE] Posição lida (navegação): 1.694813
+[17:52:26] [MAIN] Thread 4 finalizada
+Buffer navegação: 94.6071 63.4988 72.5322 8.68949 33.8021 65.6087 84.7976 97.2024 57.8338 1.69481
+Buffer nível: 53.8312 69.0436 32.9425 31.726 96.7376 42.4353 53.3184 43.8197 86.9565 38.2572
+[17:52:26] [MAIN] Execução finalizada
+\end{Verbatim}

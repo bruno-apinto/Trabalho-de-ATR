@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.5.17)  17 MAY 2026 19:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.5.17)  18 MAY 2026 23:20
 entering extended mode
  \write18 enabled.
  file:line:error style messages enabled.
@@ -23,6 +23,8 @@ File: size12.clo 2023/05/17 v1.4n Standard LaTeX file (size option)
 \abovecaptionskip=\skip48
 \belowcaptionskip=\skip49
 \bibindent=\dimen140
+) (/usr/share/texlive/texmf-dist/tex/latex/tools/indentfirst.sty
+Package: indentfirst 2023/07/02 v1.03 Indent first paragraph (DPC)
 ) (/usr/share/texlive/texmf-dist/tex/generic/babel/babel.sty
 Package: babel 2024/01/07 v24.1 The Babel package
 \babel@savecnt=\count195
@@ -201,8 +203,6 @@ runsystem(mkdir -p _minted-documentacao)...executed.
 
  (/usr/share/texlive/texmf-dist/tex/latex/setspace/setspace.sty
 Package: setspace 2022/12/04 v6.7b set line spacing
-) (/usr/share/texlive/texmf-dist/tex/latex/tools/indentfirst.sty
-Package: indentfirst 2023/07/02 v1.03 Indent first paragraph (DPC)
 ) (/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty
 Package: xcolor 2023/11/15 v3.01 LaTeX color extensions (UK)
  (/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg
@@ -307,17 +307,83 @@ Package pdftex.def Info: imagens/logo.png  used on input line 20.
  [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map} <./imagens/logo.png>]
-<imagens/arquitetura_threades_processos.png, id=12, 881.2925pt x 467.7475pt>
+<imagens/introducao.jpeg, id=12, 1445.4pt x 541.27219pt>
+File: imagens/introducao.jpeg Graphic file (type jpg)
+<use imagens/introducao.jpeg>
+Package pdftex.def Info: imagens/introducao.jpeg  used on input line 66.
+(pdftex.def)             Requested size: 455.24411pt x 170.47685pt.
+<imagens/arquitetura_threades_processos.png, id=13, 881.2925pt x 467.7475pt>
 File: imagens/arquitetura_threades_processos.png Graphic file (type png)
 <use imagens/arquitetura_threades_processos.png>
-Package pdftex.def Info: imagens/arquitetura_threades_processos.png  used on input line 73.
+Package pdftex.def Info: imagens/arquitetura_threades_processos.png  used on input line 86.
 (pdftex.def)             Requested size: 455.24411pt x 241.61707pt.
+ [1 <./imagens/introducao.jpeg>]
+Overfull \hbox (26.54385pt too wide) in paragraph at lines 94--98
+[]\OT1/cmr/m/n/12 A im-ple-menta^^Xc~ao dos buf-fers com-par-ti-lha-dos foi re-a-li-zada por meio de \OT1/cmtt/m/n/12 std::vector<float>
+ []
+
+[2 <./imagens/arquitetura_threades_processos.png>] [3] [4] [5]
+Overfull \hbox (7.47453pt too wide) in paragraph at lines 178--179
+[]\OT1/cmr/m/n/12 Esse teste de-mons-trou que a l^^Sogica de meta-locking im-ple-men-tada no \OT1/cmtt/m/n/12 BUFFER[]NAVEGACAO
+ []
+
+[6]
+<imagens/testeinicial.png, id=36, 456.70625pt x 129.48375pt>
+File: imagens/testeinicial.png Graphic file (type png)
+<use imagens/testeinicial.png>
+Package pdftex.def Info: imagens/testeinicial.png  used on input line 214.
+(pdftex.def)             Requested size: 455.24411pt x 129.07245pt.
+ [7]
+<imagens/threads.png, id=40, 567.11874pt x 102.3825pt>
+File: imagens/threads.png Graphic file (type png)
+<use imagens/threads.png>
+Package pdftex.def Info: imagens/threads.png  used on input line 220.
+(pdftex.def)             Requested size: 455.24411pt x 82.18887pt.
 \openout3 = `documentacao.pyg'.
 
- (./_minted-documentacao/default.pygstyle) (./_minted-documentacao/834C1DBEE7E3432521331B82F1E7DE6F100CC51A780A4562B5D145A3C9211572.pygtex
+ (./_minted-documentacao/default.pygstyle) (./_minted-documentacao/36B9C2AA02632B359C74B1812CD59E19BA53EABB82DB329BD2A6188872C5D41B.pygtex [8 <./imagens/testeinicial.png> <./imagens/threads.png>] [9]
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 127.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 127.
+ [10])
+\openout3 = `documentacao.pyg'.
+
+ (./_minted-documentacao/B655A196A7C8E4094377BC8F67C8DE03BA53EABB82DB329BD2A6188872C5D41B.pygtex [11] [12])
+\openout3 = `documentacao.pyg'.
+
+ (./_minted-documentacao/18F8FD8469C5660907A97D7C34797CCABA53EABB82DB329BD2A6188872C5D41B.pygtex [13] [14] [15] [16])
+<imagens/vazio.png, id=74, 563.10374pt x 171.64125pt>
+File: imagens/vazio.png Graphic file (type png)
+<use imagens/vazio.png>
+Package pdftex.def Info: imagens/vazio.png  used on input line 686.
+(pdftex.def)             Requested size: 455.24411pt x 138.7641pt.
+ [17]
+<imagens/cheio.png, id=78, 648.4225pt x 386.44376pt>
+File: imagens/cheio.png Graphic file (type png)
+<use imagens/cheio.png>
+Package pdftex.def Info: imagens/cheio.png  used on input line 692.
+(pdftex.def)             Requested size: 455.24411pt x 271.31662pt.
+<imagens/escritordemora.png, id=79, 583.17876pt x 171.64125pt>
+File: imagens/escritordemora.png Graphic file (type png)
+<use imagens/escritordemora.png>
+Package pdftex.def Info: imagens/escritordemora.png  used on input line 698.
+(pdftex.def)             Requested size: 455.24411pt x 133.99223pt.
+<imagens/leitordemora.png, id=80, 559.08875pt x 214.8025pt>
+File: imagens/leitordemora.png Graphic file (type png)
+<use imagens/leitordemora.png>
+Package pdftex.def Info: imagens/leitordemora.png  used on input line 704.
+(pdftex.def)             Requested size: 455.24411pt x 174.91008pt.
+ [18 <./imagens/vazio.png> <./imagens/cheio.png> <./imagens/escritordemora.png>]
+<imagens/final.png, id=88, 682.55pt x 258.9675pt>
+File: imagens/final.png Graphic file (type png)
+<use imagens/final.png>
+Package pdftex.def Info: imagens/final.png  used on input line 710.
+(pdftex.def)             Requested size: 455.24411pt x 172.72885pt.
+ (./_minted-documentacao/F2FFC8E2E02FA936F5E7BFFB8BA65AFAE345405C634E36EE0F39B0C1A35D2F0A.pygtex [19 <./imagens/leitordemora.png> <./imagens/final.png>]) (./_minted-documentacao/1299E6859929387D342D7518C81D0BEC3AEDD44896E87F406037FF836DD4755A.pygtex
 LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 4.
- [1 <./imagens/arquitetura_threades_processos.png>]) [2] (./documentacao.aux)
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 7.
+ [20] [21] [22] [23]) (./_minted-documentacao/17475B5DAE0F7386EECA53F18306F7CC4D287B1B7DC976BB7CB27D856ABD45D0.pygtex [24] [25] [26] [27] [28] [29]) (./_minted-documentacao/C040752D689EEA0778BD9691B326ABC1C789CD0CEB7BFB47F4DBE6DB86954762.pygtex [30] [31]) (./_minted-documentacao/F10EC7750919E324A6D8C2E7613B5D93019611F8C6887E58496AE9025A693E27.pygtex) (./_minted-documentacao/157F34D337A2A3456529B8B4C7296A509AFCDAC8AFB0ECF3286A68713C336DEA.pygtex [32]) (./_minted-documentacao/153C9068B4D9C03BDC65F486ADAA69CD9234694AC1B5644FA3B4FC4DDE2A61DE.pygtex) [33] (./documentacao.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
@@ -326,18 +392,18 @@ runsystem(rm documentacao.pyg)...executed.
 
  ) 
 Here is how much of TeX's memory you used:
- 7314 strings out of 476162
- 137538 string characters out of 5794814
- 1928975 words of memory out of 5000000
- 29233 multiletter control sequences out of 15000+600000
- 561420 words of font info for 48 fonts, out of 8000000 for 9000
+ 7457 strings out of 476162
+ 145229 string characters out of 5794814
+ 1941975 words of memory out of 5000000
+ 29344 multiletter control sequences out of 15000+600000
+ 563021 words of font info for 54 fonts, out of 8000000 for 9000
  16 hyphenation exceptions out of 8191
- 77i,7n,79p,328b,547s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmitt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
-Output written on documentacao.pdf (3 pages, 302498 bytes).
+ 77i,8n,79p,998b,657s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmitt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
+Output written on documentacao.pdf (34 pages, 1255545 bytes).
 PDF statistics:
- 49 PDF objects out of 1000 (max. 8388607)
- 27 compressed objects within 1 object stream
+ 184 PDF objects out of 1000 (max. 8388607)
+ 107 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
- 11 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 51 words of extra memory for PDF output out of 10000 (max. 10000000)
 

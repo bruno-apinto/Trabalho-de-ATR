@@ -1,0 +1,60 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{c+cp}{\PYGZsh{}ifndef SINCRONIZACAO\PYGZus{}H}
+\PYG{c+cp}{\PYGZsh{}define SINCRONIZACAO\PYGZus{}H}
+
+\PYG{c+cp}{\PYGZsh{}include}\PYG{+w}{ }\PYG{c+cpf}{\PYGZdq{}includes.hpp\PYGZdq{}}
+\PYG{c+cp}{\PYGZsh{}include}\PYG{+w}{ }\PYG{c+cpf}{\PYGZdq{}shared\PYGZus{}memory.hpp\PYGZdq{}}
+
+\PYG{c+cp}{\PYGZsh{}define ELEMENTOS\PYGZus{}BUFFERS 10}
+
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{log\PYGZus{}message}\PYG{+w}{ }\PYG{p}{(}\PYG{k}{const}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{string}\PYG{o}{\PYGZam{}}\PYG{+w}{ }\PYG{k+kr}{thread}\PYG{p}{,}\PYG{+w}{ }\PYG{k}{const}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{string}\PYG{o}{\PYGZam{}}\PYG{+w}{ }\PYG{n}{mensagem}\PYG{p}{);}
+\PYG{k+kt}{float}\PYG{+w}{ }\PYG{n+nf}{numero\PYGZus{}aleatorio\PYGZus{}debugg}\PYG{p}{();}
+
+\PYG{c+cm}{/**}
+\PYG{c+cm}{ * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade}
+\PYG{c+cm}{ *  e liga/desliga para o controle de navegação. O comando de navegação que deve implementar a lógica de manual/ }
+\PYG{c+cm}{ * automático. Exerce a função de ESCRITOR sobre o BUFFER\PYGZus{}NAVEGACAO}
+\PYG{c+cm}{ * }
+\PYG{c+cm}{ */}
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{comando\PYGZus{}navegacao}\PYG{p}{();}
+
+\PYG{c+cm}{/**}
+\PYG{c+cm}{ * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)}
+\PYG{c+cm}{ *  a partir de um setpoint de velocidade recebido pelo Comando de Navegação. Exerce a função de LEITOR do BUFFER \PYGZus{}NAVEGACAO}
+\PYG{c+cm}{ * }
+\PYG{c+cm}{ * @param mtx mutex utilizado}
+\PYG{c+cm}{ * @param BUFFER historico de posições}
+\PYG{c+cm}{ */}
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{controle\PYGZus{}navegacao}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER}\PYG{p}{);}
+
+\PYG{c+cm}{/**}
+\PYG{c+cm}{ * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER\PYGZus{}NAVEGACAO.}
+\PYG{c+cm}{ * }
+\PYG{c+cm}{ * @param mtx mutex utilizado na variavel compartilhada}
+\PYG{c+cm}{ * @param BUFFER historico de posições}
+\PYG{c+cm}{ */}
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{distancia\PYGZus{}percorrida}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER}\PYG{p}{);}
+
+\PYG{c+cm}{/**}
+\PYG{c+cm}{ * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER\PYGZus{}NIVEL.}
+\PYG{c+cm}{ * }
+\PYG{c+cm}{ * @param mtx mutex para sincronizar o buffer compartilhado}
+\PYG{c+cm}{ * @param BUFFER buffer de dados coletados pelo lidar}
+\PYG{c+cm}{ */}
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{coletor\PYGZus{}dados}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER}\PYG{p}{);}
+
+\PYG{c+cm}{/**}
+\PYG{c+cm}{ * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como}
+\PYG{c+cm}{ * ESCRITOR do BUFFER\PYGZus{}NIVEL}
+\PYG{c+cm}{ * }
+\PYG{c+cm}{ * @param mtx mutex para buffer compartilhado}
+\PYG{c+cm}{ * @param BUFFER vetor de dados do nível da distancia do teto}
+\PYG{c+cm}{ */}
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{reconstrucao\PYGZus{}teto}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx\PYGZus{}navegacao}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx\PYGZus{}nivel}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx\PYGZus{}camera}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER\PYGZus{}NAVEGACAO}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER\PYGZus{}NIVEL}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{MemoriaCompartilhada}\PYG{o}{*}\PYG{+w}{ }\PYG{n}{shm}\PYG{p}{);}
+
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{inspecao\PYGZus{}camera}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{o}{\PYGZam{}}\PYG{+w}{ }\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{MemoriaCompartilhada}\PYG{o}{*}\PYG{+w}{ }\PYG{n}{shm}\PYG{p}{);}
+
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{operacao\PYGZus{}remota}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{o}{\PYGZam{}}\PYG{n}{BUFFER}\PYG{p}{);}
+
+\PYG{c+cp}{\PYGZsh{}endif}
+\end{Verbatim}

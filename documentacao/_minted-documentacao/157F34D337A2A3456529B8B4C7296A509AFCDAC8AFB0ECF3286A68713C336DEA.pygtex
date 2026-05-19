@@ -1,0 +1,8 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{c+cp}{\PYGZsh{}include}\PYG{+w}{ }\PYG{c+cpf}{\PYGZdq{}../include/includes.hpp\PYGZdq{}}
+
+\PYG{k+kt}{void}\PYG{+w}{ }\PYG{n+nf}{operacao\PYGZus{}remota}\PYG{p}{(}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{o}{\PYGZam{}}\PYG{+w}{ }\PYG{n}{mtx}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{std}\PYG{o}{::}\PYG{n}{vector}\PYG{o}{\PYGZlt{}}\PYG{k+kt}{float}\PYG{o}{\PYGZgt{}\PYGZam{}}\PYG{+w}{ }\PYG{n}{BUFFER}\PYG{p}{)\PYGZob{}}
+\PYG{+w}{    }\PYG{n}{std}\PYG{o}{::}\PYG{n}{unique\PYGZus{}lock}\PYG{o}{\PYGZlt{}}\PYG{n}{std}\PYG{o}{::}\PYG{n}{mutex}\PYG{o}{\PYGZgt{}}\PYG{+w}{ }\PYG{n}{lock}\PYG{p}{(}\PYG{n}{mtx}\PYG{p}{);}\PYG{+w}{ }\PYG{c+c1}{// Protocolo de entrada}
+\PYG{+w}{    }\PYG{n}{lock}\PYG{p}{.}\PYG{n}{unlock}\PYG{p}{();}\PYG{+w}{ }\PYG{c+c1}{// Protocolo de saída}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}
