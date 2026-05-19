@@ -1,12 +1,12 @@
 \documentclass[12pt]{article}
 
+\usepackage{identfirst}
 \usepackage[brazil]{babel}
 \usepackage[a4paper,margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{minted}
 \usepackage{setspace}
 \usepackage{float}
-\usepackage{identfirst}
 
 \begin{document}
 
@@ -90,6 +90,18 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 Ademais, para a comunicação e para os recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
  foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma mais simples, usando wait e signal diretamente, visando simplificar a implementação do meta-locking, com condições complexas de acesso ao recurso compartilhado. %chktex 18
   E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
+
+\subsection{Escolha da sincronização}
+
+A lógica de sincronização foi implementada de forma diferente para cada buffer devido à natureza dos acessos realizados sobre cada recurso compartilhado. No caso do \texttt{BUFFER\_NAVEGACAO}, existe uma tarefa escritora, associada ao cálculo da distância percorrida, e mais de uma tarefa leitora, associada ao controle de navegação e à reconstrução do teto. Por esse motivo, foi adotada uma lógica de leitores e escritores baseada em meta-locking, utilizando contadores auxiliares para indicar leitores ativos, leitores aguardando, escritores ativos e escritores aguardando. Antes de acessar o buffer, cada tarefa verifica o estado desses contadores dentro de uma região protegida por \texttt{mutex}. Caso o recurso não esteja disponível, a tarefa é bloqueada por meio de uma \texttt{condition\_variable}, permanecendo em espera até que outra tarefa libere o acesso e envie uma notificação.
+
+Essa estratégia evita situações de \textit{race condition}, nas quais duas ou mais threads acessariam simultaneamente o mesmo recurso compartilhado de forma inconsistente, além de dar prioridade aos escritores (como pode ser visto nas condições do meta-locking), evitando inanição. No caso do \texttt{BUFFER\_NAVEGACAO}, a sincronização foi feita com variáveis de condição, que impedem que uma escrita ocorra enquanto há leitores ativos e também impede que outros leitores ou escritores acessem durante uma escrita ativa. Dessa forma, evita-se que uma thread leia um valor parcialmente atualizado ou que uma escrita sobrescreva dados enquanto outra tarefa ainda está utilizando o buffer.
+
+Já o \texttt{BUFFER\_NIVEL} foi implementado com uma lógica produtor-consumidor, pois possui uma relação mais direta entre as tarefas: a reconstrução do teto atua como produtora das amostras de nível, enquanto o coletor de dados atua como consumidor. Quando o \texttt{BUFFER\_NIVEL} está vazio, ou seja, quando \texttt{dados\_nivel == 0}, a tarefa consumidora é bloqueada por uma variável de condição até que a tarefa produtora escreva um novo dado e envie uma notificação. Isso evita leitura inválida de posições sem dados disponíveis. De forma análoga, quando o buffer atinge sua capacidade máxima, a tarefa produtora é bloqueada até que o consumidor leia uma amostra e libere espaço. Esse mecanismo evita sobrescrita de dados ainda não consumidos.
+
+O uso de \texttt{condition\_variable} também evita espera ativa, pois as threads bloqueadas não ficam executando continuamente testes em laços de repetição enquanto aguardam o recurso. Em vez disso, elas são suspensas pelo sistema operacional e retomadas apenas quando uma condição relevante é sinalizada. Isso reduz o uso desnecessário de CPU e torna a execução mais adequada para aplicações concorrentes e de tempo real.
+
+Por fim, a utilização de \texttt{mutexes}, variáveis de condição e contadores de controle contribui para evitar erros clássicos de programação concorrente, como \textit{race conditions}, leituras inconsistentes, sobrescrita de dados, perda de eventos, inanição e bloqueios permanentes. 
 
 \section{Resultados de Testes Preliminares Realizados}
 
