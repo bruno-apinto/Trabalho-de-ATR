@@ -6,6 +6,7 @@
 \usepackage{minted}
 \usepackage{setspace}
 \usepackage{float}
+\usepackage{identfirst}
 
 \begin{document}
 
@@ -79,23 +80,22 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 \section{Proposta de Arquitetura}
 
     A arquitetura do trabalho foi realizada com o intuito de facilitar o máximo possível
-    a aplicação dos conceitos, por isso a utilização máxima de threads. A partir dos requisitos mínimos,
-    pelo menos 2 processos foram criados. Além, aproveita-se das threads originárias dos póprios
+    a aplicação dos conceitos, por isso foi priorizada a utilização de threads à criação de processos. A partir dos requisitos mínimos, 2 processos foram criados. Além disso, aproveita-se das threads originárias dos próprios
     processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura \ref{fig:arquitetura}.
 \begin{figure}[ht]
   \includegraphics[ width= \linewidth]{imagens/arquitetura_threades_processos.png}
   \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}\label{fig:arquitetura}
 \end{figure}
 
-Ademais, para a comunicação e recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
- foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma "normal". %chktex 18
+Ademais, para a comunicação e para os recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
+ foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma mais simples, usando wait e signal diretamente, visando simplificar a implementação do meta-locking, com condições complexas de acesso ao recurso compartilhado. %chktex 18
   E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
 
 \section{Resultados de Testes Preliminares Realizados}
 
 Durante a fase de desenvolvimento da arquitetura do sistema, foram realizados testes preliminares para validar a implementação dos buffers compartilhados e a sincronização entre as tarefas que escrevem e leem nos buffers. Esses testes foram fundamentais para garantir que o sistema se comporta corretamente em diferentes condições do sistema, evitando, por exemplo, condições de corrida, inanição e garantindo a integridade dos dados e a execução e  finalização corretas de todas as partes já implementadas do código. 
 
-Os testes foram conduzidos com dados simulados, uma vez que a integração com a simulação gráfica, a interface de operação remota, a comunicação MQTT e demais mecanismos externos será realizada apenas na etapa posterior do projeto. Foram feitos testes de execução, de diferentes quantidades de falhas encontradas no caminho percorrido, casos onde o buffer estava vazio, garantindo que as tarefas consumidoras aguardavam corretamente até que os dados estivessem disponíveis, além de casos de bloqueio de leitores e escritores do buffer de navegação, garantindo a boa execução do meta-locking implementado, em que mais de uma thread pode ler o buffer, porém somente uma thread pode acessá-lo em caso de escrita. 
+Os testes foram conduzidos com dados simulados, uma vez que o restante do código ainda será realizado na etapa posterior do projeto. Foram feitos testes de execução, de diferentes quantidades de falhas encontradas no caminho percorrido, casos onde o buffer estava vazio, garantindo que as tarefas consumidoras aguardavam corretamente até que os dados estivessem disponíveis, além de casos de bloqueio de leitores e escritores do buffer de navegação, garantindo a boa execução do meta-locking implementado, em que mais de uma thread pode ler o buffer, porém somente uma thread pode acessá-lo em caso de escrita. 
 
 Os resultados desses testes preliminares foram positivos, demonstrando que a implementação dos buffers compartilhados e a sincronização entre as tarefas estão funcionando conforme o esperado. Esses resultados fornecem uma base sólida para a próxima etapa do desenvolvimento do sistema, onde será finalizada a implementação do sistema.
 
@@ -172,7 +172,7 @@ A thread de controle de navegação permaneceu ativa por mais tempo devido a atr
 
 De forma geral, os testes preliminares indicaram que a implementação atual atende aos objetivos definidos para a primeira etapa do projeto. Foram validadas a criação das tarefas concorrentes, a comunicação por buffers, a sincronização por mutexes e variáveis de condição, o bloqueio correto em situações de buffer cheio e vazio, o controle de leitores e escritores no buffer de navegação, o acionamento da câmera por evento simulado e a finalização controlada das threads.
 
-Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte, na qual serão incorporadas as interfaces de operação remota, simulação física, comunicação MQTT e testes de tempo de resposta, escalonabilidade e a finalização do programa.
+Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte.
 
 Todos os prints e testes realizados encontram-se no apêndice desse relatório.
 
