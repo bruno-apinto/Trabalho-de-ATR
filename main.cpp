@@ -40,41 +40,56 @@ int main (){
     shm->c_man = false;
     shm->j_sp_velocidade = 0;
 
-    //INICIALIZAÇÃO PROCESSOS
+    pid_t pid_interface = fork();
 
-    pid_t pid;
+    if (pid_interface == 0) {
+        log_message("PROCESSO", "Processo interface Pygame criado");
 
-    pid = fork();
+        execlp("python3.12", "python3.12", "src/interface.py", nullptr);
 
-   if (pid == 0){
-
-            log_message(
-            "PROCESSO",
-            "Processo comando_navegacao criado"
-        );
-
-        comando_navegacao ();
-
-        // Exemplo: filho escreve comando remoto
-        shm->c_automatico = true;
-        shm->j_sp_velocidade = 50;
-
-        std::cout << "Comando de navegação escreveu na memória compartilhada:" << std::endl;
-        std::cout << "c_automatico = " << shm->c_automatico << std::endl;
-        std::cout << "j_sp_velocidade = " << shm->j_sp_velocidade << std::endl;
-
-        // Desanexa memória no filho
-        shmdt(shm);
-   }
-
-   else if (pid < 0){
-        perror ("Erro ao criar processo\n");
+        perror("Erro ao executar interface.py");
         exit(1);
-   }
+    }
+    else if (pid_interface < 0) {
+        perror("Erro ao criar processo da interface");
+        exit(1);
+    }
 
-   else {
+        //INICIALIZAÇÃO PROCESSOS
 
-        wait(nullptr);
+        pid_t pid;
+
+        pid = fork();
+
+    if (pid == 0){
+
+                log_message(
+                "PROCESSO",
+                "Processo comando_navegacao criado"
+            );
+
+            comando_navegacao ();
+
+            // Exemplo: filho escreve comando remoto
+            shm->c_automatico = true;
+            shm->j_sp_velocidade = 50;
+
+            std::cout << "Comando de navegação escreveu na memória compartilhada:" << std::endl;
+            std::cout << "c_automatico = " << shm->c_automatico << std::endl;
+            std::cout << "j_sp_velocidade = " << shm->j_sp_velocidade << std::endl;
+
+            // Desanexa memória no filho
+            shmdt(shm);
+    }
+
+    else if (pid < 0){
+            perror ("Erro ao criar processo\n");
+            exit(1);
+    }
+
+    else {
+
+            wait(nullptr);
 
         std::cout << "Controle de navegação lendo memória compartilhada:" << std::endl;
         std::cout << "c_automatico = " << shm->c_automatico << std::endl;
