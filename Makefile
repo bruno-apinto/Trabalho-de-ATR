@@ -2,7 +2,7 @@ TARGET = programa
 
 CXX = g++
 
-CXXFLAGS = -std=c++17 -Wall -Wextra -I. -Iinclude -I/opt/homebrew/include -pthread
+CXXFLAGS = -std=c++17 -I. -Iinclude -I/opt/homebrew/include -pthread
 
 SRCS = main.cpp src/sincronizacao.cpp src/simulacao.cpp
 
