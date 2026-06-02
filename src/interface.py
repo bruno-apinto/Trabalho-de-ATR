@@ -30,8 +30,26 @@ carImg = pygame.image.load(str(BASE_DIR / 'carrinho.png'))
 largura_carro = carImg.get_width()
 altura_carro = carImg.get_height()
 
+# Diminuir tamanho do carro
+carImg = pygame.transform.scale(carImg, (int(largura_carro * 0.8), int(altura_carro * 0.8)))
+largura_carro = carImg.get_width()
+altura_carro = carImg.get_height()
+
 carx = 0
-cary = altura_tela // 2 - altura_carro // 2 + 65
+cary = altura_tela // 2 - altura_carro // 2 + 82
+
+# Carregar imagens de falhas
+falha_buraco = pygame.image.load(str(BASE_DIR / 'falha_buraco.png'))
+falha_buraco = pygame.transform.scale(falha_buraco, (250, 147))
+
+falha_protuberancia = pygame.image.load(str(BASE_DIR / 'falha_protuberancia.png'))
+falha_protuberancia = pygame.transform.scale(falha_protuberancia, (250, 147))
+
+# Posições das falhas na parte superior do túnel (teto)
+falhas = [
+    {'img': falha_buraco, 'x': 300, 'y': tunel_y + 0},
+    {'img': falha_protuberancia, 'x': 700, 'y': tunel_y + 0},
+]
 
 velocidade = 5
 
@@ -73,6 +91,15 @@ while True: # ciclo principal
     DISPLAYSURF.blit(backImg, (tunel_x, tunel_y))
     DISPLAYSURF.blit(backImg, (tunel_x + largura_tela, tunel_y))
     DISPLAYSURF.blit(backImg, (tunel_x - largura_tela, tunel_y))
+
+    # Desenhar falhas na parte superior do túnel
+    for falha in falhas:
+        falha_x = falha['x'] + tunel_x
+        falha_y = falha['y']
+        DISPLAYSURF.blit(falha['img'], (falha_x, falha_y))
+        # Repetir falhas para o efeito de loop infinito
+        DISPLAYSURF.blit(falha['img'], (falha_x + largura_tela, falha_y))
+        DISPLAYSURF.blit(falha['img'], (falha_x - largura_tela, falha_y))
 
     DISPLAYSURF.blit(carImg, (carx, cary))
 
