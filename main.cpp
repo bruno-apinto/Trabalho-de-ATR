@@ -9,7 +9,7 @@ int main (){
 
     // PARÂMETROS SINCRONIZAÇÃO
     boost::asio::io_context io; // Contexto de IO para sincronizar as tarrefas
-    boost::asio::io_conetxt::strand strand(io); // Strand para garantir a execução sequencial das tarefas
+    boost::asio::io_context::strand strand(io); // Strand para garantir a execução sequencial das tarefas
 
     // Generate a unique key for the shared memory segment 
     key_t key = IPC_PRIVATE; // Use IPC_PRIVATE for a unique key 
@@ -70,7 +70,7 @@ int main (){
 
             log_message("PROCESSO","Processo comando_navegacao criado");
 
-            tempo_tarefa t(microssegundos (100));
+            tempo_tarefa t(io, microssegundos(100));
             t.async_wait(boost::asio::bind_executor(strand, std::bind(comando_navegacao, std::placeholders::_1, &t, &strand)));
 
             // Exemplo: filho escreve comando remoto

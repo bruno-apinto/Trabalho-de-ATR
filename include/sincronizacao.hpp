@@ -7,7 +7,7 @@
 #define ELEMENTOS_BUFFERS 10
 
 typedef boost::asio::steady_timer tempo_tarefa;
-typedef boost::asio::microseconds microssegundos;
+typedef boost::asio::chrono::microseconds microssegundos;
 
 void log_message (const std::string& thread, const std::string& mensagem);
 float numero_aleatorio_debugg();
@@ -18,7 +18,9 @@ float numero_aleatorio_debugg();
  * automático. Exerce a função de ESCRITOR sobre o BUFFER_NAVEGACAO
  * 
  */
-void comando_navegacao();
+void comando_navegacao(const boost::system::error_code& /*e*/,
+           boost::asio::steady_timer* t, 
+           boost::asio::io_context::strand* strand);
 
 /**
  * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)

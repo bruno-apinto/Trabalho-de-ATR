@@ -53,8 +53,13 @@ float numero_aleatorio_debugg(){
 
 //FUNÇÕES DO SISTEMA 
 
-void comando_navegacao(){
+void comando_navegacao(const boost::system::error_code& /*e*/,
+           boost::asio::steady_timer* t, 
+           boost::asio::io_context::strand* strand){
 
+
+    // Chamada para executar de novo        
+    t->async_wait(boost::asio::bind_executor(*strand, std::bind(comando_navegacao, std::placeholders::_1, t, strand)));
 }
 
 void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
