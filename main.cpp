@@ -63,10 +63,7 @@ int main (){
 
     if (pid == 0){
 
-                log_message(
-                "PROCESSO",
-                "Processo comando_navegacao criado"
-            );
+                log_message("PROCESSO","Processo comando_navegacao criado");
 
             comando_navegacao ();
 
@@ -109,10 +106,7 @@ int main (){
 
         std::vector <std::thread> threads_navegacao;
 
-        log_message(
-            "MAIN",
-            "Criando thread distancia_percorrida"
-        );
+        log_message("MAIN","Criando thread distancia_percorrida");
 
         threads_navegacao.emplace_back(
             distancia_percorrida,
@@ -120,10 +114,7 @@ int main (){
             std::ref(BUFFER_NAVEGACAO)
         );
 
-        log_message(
-            "MAIN",
-            "Criando thread inspecao_camera"
-        );
+        log_message("MAIN","Criando thread inspecao_camera");
 
         threads_navegacao.emplace_back(
             inspecao_camera,
@@ -131,10 +122,7 @@ int main (){
             shm
         );
 
-        log_message(
-            "MAIN",
-            "Criando thread coletor_dados"
-        );
+        log_message("MAIN","Criando thread coletor_dados");
 
         threads_navegacao.emplace_back(
             coletor_dados,
@@ -142,10 +130,7 @@ int main (){
             std::ref(BUFFER_NIVEL)
         );
 
-        log_message(
-            "MAIN",
-            "Criando thread reconstrucao_teto"
-        );
+        log_message("MAIN","Criando thread reconstrucao_teto");
 
         threads_navegacao.emplace_back(
             reconstrucao_teto,
@@ -157,10 +142,7 @@ int main (){
             shm
         );
 
-        log_message(
-            "MAIN",
-            "Criando thread controle_navegacao"
-        );
+        log_message("MAIN","Criando thread controle_navegacao");
 
         threads_navegacao.emplace_back(
             controle_navegacao,
@@ -194,10 +176,7 @@ int main (){
 
         std::cout << std::endl;
 
-        log_message(
-            "MAIN",
-            "Execução finalizada"
-        );
+        log_message("MAIN","Execução finalizada");
    }
 
     // Desanexa memória no pai
