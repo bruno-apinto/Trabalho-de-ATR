@@ -6,6 +6,9 @@
 
 #define ELEMENTOS_BUFFERS 10
 
+typedef boost::asio::steady_timer tempo_tarefa;
+typedef boost::asio::microseconds microssegundos;
+
 void log_message (const std::string& thread, const std::string& mensagem);
 float numero_aleatorio_debugg();
 
@@ -54,5 +57,6 @@ void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mu
 void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm);
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER);
+
 
 #endif

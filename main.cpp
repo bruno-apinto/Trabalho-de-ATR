@@ -7,6 +7,10 @@ int main (){
 
     simulacao();
 
+    // PARÂMETROS SINCRONIZAÇÃO
+    boost::asio::io_context io; // Contexto de IO para sincronizar as tarrefas
+    boost::asio::io_conetxt::strand strand(io); // Strand para garantir a execução sequencial das tarefas
+
     // Generate a unique key for the shared memory segment 
     key_t key = IPC_PRIVATE; // Use IPC_PRIVATE for a unique key 
     
@@ -55,17 +59,19 @@ int main (){
         exit(1);
     }
 
-        //INICIALIZAÇÃO PROCESSOS
+    else {
 
-        pid_t pid;
 
-        pid = fork();
+    pid_t pid = fork();
 
     if (pid == 0){
 
-                log_message("PROCESSO","Processo comando_navegacao criado");
+        // PROCESSO DE COMANDO DE NAVEGAÇÃO
 
-            comando_navegacao ();
+            log_message("PROCESSO","Processo comando_navegacao criado");
+
+            tempo_tarefa t(microssegundos (100));
+            t.async_wait(boost::asio::bind_executor(strand, std::bind(comando_navegacao, std::placeholders::_1, &t, &strand)));
 
             // Exemplo: filho escreve comando remoto
             shm->c_automatico = true;
@@ -77,6 +83,8 @@ int main (){
 
             // Desanexa memória no filho
             shmdt(shm);
+
+            io.run();
     }
 
     else if (pid < 0){
@@ -86,7 +94,9 @@ int main (){
 
     else {
 
-            wait(nullptr);
+        // PROCESSO DE CONTROLE DE NAVEGAÇÃO E THREADS DE TAREFAS
+
+        wait(nullptr);
 
         std::cout << "Controle de navegação lendo memória compartilhada:" << std::endl;
         std::cout << "c_automatico = " << shm->c_automatico << std::endl;
@@ -184,6 +194,7 @@ int main (){
 
     // Remove segmento de memória compartilhada
     shmctl(shmid, IPC_RMID, nullptr);
-
+    }
     return 0;
+    
 }

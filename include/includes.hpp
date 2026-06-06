@@ -20,3 +20,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/wait.h>
+
+#include <functional>
+#include <boost/asio.hpp>
