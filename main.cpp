@@ -73,7 +73,6 @@ int main (){
             tempo_tarefa t(io, microssegundos(100));
             t.async_wait(boost::asio::bind_executor(strand, std::bind(comando_navegacao, std::placeholders::_1, &t, &strand)));
 
-            // Exemplo: filho escreve comando remoto
             shm->c_automatico = true;
             shm->j_sp_velocidade = 50;
 

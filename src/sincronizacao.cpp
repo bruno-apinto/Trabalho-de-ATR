@@ -55,11 +55,15 @@ float numero_aleatorio_debugg(){
 
 void comando_navegacao(const boost::system::error_code& /*e*/,
            boost::asio::steady_timer* t, 
-           boost::asio::io_context::strand* strand){
+           boost::asio::io_context::strand* strand,
+           MemoriaCompartilhada* shm){
 
-
-    // Chamada para executar de novo        
-    t->async_wait(boost::asio::bind_executor(*strand, std::bind(comando_navegacao, std::placeholders::_1, t, strand)));
+    std::cout << "Processo comando navegação\n";
+    
+    // Chamada para executar de novo 
+    if (shm->c_automatico == true && shm->c_man == false)
+    //ATIVAR APENAS QUANDO ESTIVER OS OUTROS PROCESSOS PRONTOS 
+        //t->async_wait(boost::asio::bind_executor(*strand, std::bind(comando_navegacao, std::placeholders::_1, t, strand)));
 }
 
 void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
