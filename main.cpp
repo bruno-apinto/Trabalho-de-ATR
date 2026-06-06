@@ -70,8 +70,8 @@ int main (){
 
             log_message("PROCESSO","Processo comando_navegacao criado");
 
-            tempo_tarefa t(io, microssegundos(100));
-            t.async_wait(boost::asio::bind_executor(strand, std::bind(comando_navegacao, std::placeholders::_1, &t, &strand)));
+            tempo_tarefa t(io, microssegundos(80));
+            t.async_wait(boost::asio::bind_executor(strand, std::bind(comando_navegacao, std::placeholders::_1, &t, &strand, shm)));
 
             shm->c_automatico = true;
             shm->j_sp_velocidade = 50;
@@ -117,11 +117,17 @@ int main (){
 
         log_message("MAIN","Criando thread distancia_percorrida");
 
-        threads_navegacao.emplace_back(
-            distancia_percorrida,
-            std::ref(mutex_navegacao),
-            std::ref(BUFFER_NAVEGACAO)
-        );
+        tempo_tarefa t1(io, microssegundos(20));
+
+        t1.async_wait(boost::asio::bind_executor(
+            strand, std::bind(
+                distancia_percorrida, 
+                std::placeholders::_1, 
+                &t1, 
+                &strand,
+                std::ref(mutex_navegacao),
+                std::ref(BUFFER_NAVEGACAO))));
+
 
         log_message("MAIN","Criando thread inspecao_camera");
 

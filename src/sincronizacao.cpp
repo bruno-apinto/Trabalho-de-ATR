@@ -134,11 +134,15 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
-void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
+void distancia_percorrida(const boost::system::error_code& /*e*/,
+           boost::asio::steady_timer* t, 
+           boost::asio::io_context::strand* strand, 
+           std::mutex &mtx, 
+           std::vector<float> &BUFFER){
 
+    std::mutex &mtx, std::vector<float> &BUFFER
     int idx = -1; // -1 para corrigir o inicio de escrita
     
-    for (int i = 0; i<20; i++){
         
         idx++;
         idx = idx % ELEMENTOS_BUFFERS;
@@ -201,7 +205,17 @@ void distancia_percorrida(std::mutex &mtx, std::vector<float> &BUFFER){
             "DISTANCIA",
             "Posição escrita (navegação): " + std::to_string(escrita)
         );
-    }
+
+        if (false){
+            t1->async_wait(boost::asio::bind_executor(
+                    strand, std::bind(
+                    distancia_percorrida, 
+                    std::placeholders::_1, 
+                    t1, 
+                    strand,
+                    std::ref(mtx),
+                    std::ref(BUFFER))));
+        }
 }
 
 void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, std::vector <float> &BUFFER_NAVEGACAO, std::vector <float> &BUFFER_NIVEL, MemoriaCompartilhada* shm){

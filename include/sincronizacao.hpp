@@ -20,7 +20,8 @@ float numero_aleatorio_debugg();
  */
 void comando_navegacao(const boost::system::error_code& /*e*/,
            boost::asio::steady_timer* t, 
-           boost::asio::io_context::strand* strand);
+           boost::asio::io_context::strand* strand,
+            MemoriaCompartilhada* shm);
 
 /**
  * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)
@@ -37,7 +38,7 @@ void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER);
  * @param mtx mutex utilizado na variavel compartilhada
  * @param BUFFER historico de posições
  */
-void distancia_percorrida(std::mutex &mtx, std::vector <float> &BUFFER);
+void distancia_percorrida(const boost::system::error_code& /*e*/, boost::asio::steady_timer* t, boost::asio::io_context::strand* strand, std::mutex &mtx, std::vector <float> &BUFFER);
 
 /**
  * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER_NIVEL.
