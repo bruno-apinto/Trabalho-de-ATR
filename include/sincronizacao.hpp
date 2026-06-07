@@ -57,7 +57,10 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER);
  */
 void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, std::vector <float> &BUFFER_NAVEGACAO, std::vector <float> &BUFFER_NIVEL, MemoriaCompartilhada* shm);
 
-void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm);
+void inspecao_camera(const boost::system::error_code& /*e*/,
+           boost::asio::steady_timer* t, 
+           boost::asio::io_context::strand* strand,
+           std::mutex& mtx, MemoriaCompartilhada* shm);
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER);
 

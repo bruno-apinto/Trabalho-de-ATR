@@ -382,9 +382,10 @@ void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
 
 }
 
-void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
-
-    while(true){
+void inspecao_camera(const boost::system::error_code& /*e*/,
+           boost::asio::steady_timer* t, 
+           boost::asio::io_context::strand* strand,
+           std::mutex& mtx, MemoriaCompartilhada* shm){
 
         std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
 
@@ -406,5 +407,5 @@ void inspecao_camera(std::mutex& mtx, MemoriaCompartilhada* shm){
 
         log_message("CAMERA", "Inspeção finalizada");
         lock.unlock(); // Protocolo de saída
+
     }
-}
