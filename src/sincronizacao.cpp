@@ -1,411 +1,255 @@
 #include "../include/sincronizacao.hpp"
 
-#define ELEMENTOS_BUFFERS 10
-const int SHM_SIZE = 1024; // Size of the shared memory segment
-
-//sincronização
-std::condition_variable camera;
-
-//teste para finalizar a camera
-int eventos_camera = 0;
-bool finalizar_camera = false;
-
-//Variaveis de condição buffers
-std::condition_variable leitura_buffer_navegacao;
-std::condition_variable escrita_buffer_navegacao;
-
-int AR_NAVEGACAO = 0;
-int WR_NAVEGACAO = 0;
-int AW_NAVEGACAO = 0;
-int WW_NAVEGACAO = 0;
-
-std::condition_variable leitura_buffer_nivel; 
-std::condition_variable escrita_buffer_nivel;
-int dados_nivel = 0;
-
-//Funções auxiliares de debbug
-std::mutex mutex_log;
-
-void log_message(const std::string& thread,
-                 const std::string& mensagem){
-
+void log_message(const std::string& thread, const std::string& mensagem){
     std::lock_guard<std::mutex> lock(mutex_log);
-
     auto agora = std::chrono::system_clock::now();
-
     auto tempo = std::chrono::system_clock::to_time_t(agora);
-
-    std::cout
-        << "[" << std::put_time(std::localtime(&tempo), "%H:%M:%S") << "] "
-        << "[" << thread << "] "
-        << mensagem
-        << std::endl;
+    std::cout << "[" << std::put_time(std::localtime(&tempo), "%H:%M:%S") << "] "
+              << "[" << thread << "] " << mensagem << std::endl;
 }
 
 float numero_aleatorio_debugg(){
-
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> dis(1.0f, 100.0f);
-
     return dis(gen);
 }
 
-//FUNÇÕES DO SISTEMA 
+// =========================================================================
+// TAREFAS ASSÍNCRONAS DO SISTEMA
+// =========================================================================
 
-void comando_navegacao(const boost::system::error_code& /*e*/,
-           boost::asio::steady_timer* t, 
-           boost::asio::io_context::strand* strand,
-           MemoriaCompartilhada* shm){
+void comando_navegacao(const boost::system::error_code& e,
+                       boost::asio::steady_timer* t, 
+                       boost::asio::io_context::strand* strand,
+                       MemoriaCompartilhada* shm)
+{
+    if (e) return;
 
-    std::cout << "Processo comando navegação\n";
-    
-    // Chamada para executar de novo 
-    if (shm->c_automatico == true && shm->c_man == false)
-    //ATIVAR APENAS QUANDO ESTIVER OS OUTROS PROCESSOS PRONTOS 
-        //t->async_wait(boost::asio::bind_executor(*strand, std::bind(comando_navegacao, std::placeholders::_1, t, strand)));
-}
-
-void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    int idx = -1; // -1 para corrigir o inicio de leitura do vetor
-
-    for (int i = 0; i<20; i++){
-        
-        idx++;
-        idx = idx%ELEMENTOS_BUFFERS;
-        
-        std::unique_lock<std::mutex> lock (mtx);
-
-        while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
-
-            log_message(
-                "CONTROLE",
-                "Leitor aguardando acesso ao buffer navegacao"
-            );
-
-            WR_NAVEGACAO++;
-
-            leitura_buffer_navegacao.wait(lock);
-
-            WR_NAVEGACAO--;
-
-            log_message(
-                "CONTROLE",
-                "Leitor retomou execução"
-            );
-        }
-
-        AR_NAVEGACAO++;
-
-        lock.unlock();
-
-        //SEÇÃO CRÍTICA
-        float leitura = BUFFER[idx];
-        
-        /*log_message(
-            "CONTROLE",
-            "Leitor demora para segurar acesso ao BUFFER_NAVEGACAO"
-        );
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(800));*/
-
-        //SEÇÃO CRÍTICA
-
-        //teste de bloqueio de leitura
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        lock.lock();
-
-        AR_NAVEGACAO--;
-
-        if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0){
-            escrita_buffer_navegacao.notify_one();
-        }
-
-        lock.unlock();
-
-        log_message(
-            "CONTROLE",
-            "Posição lida (navegação): " + std::to_string(leitura)
-        );
-
+    // CONDIÇÃO DE PARADA: Se o comando for desativado, não reagenda.
+    if (shm->c_automatico == false) {
+        log_message("COMANDO", "Modo automático desativado. Encerrando tarefa.");
+        return;
     }
 
+    std::cout << "Processo comando navegação executando...\n";
+    
+    // Atualiza tempo e reagenda
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(80));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(comando_navegacao, std::placeholders::_1, t, strand, shm)));
 }
 
-void distancia_percorrida(const boost::system::error_code& /*e*/,
-           boost::asio::steady_timer* t, 
-           boost::asio::io_context::strand* strand, 
-           std::mutex &mtx, 
-           std::vector<float> &BUFFER){
+void controle_navegacao(const boost::system::error_code& e,
+                        boost::asio::steady_timer* t, 
+                        boost::asio::io_context::strand* strand,
+                        std::mutex &mtx, 
+                        std::vector<float> &BUFFER,
+                        MemoriaCompartilhada* shm)
+{
+    if (e) return;
+    if (shm->c_automatico == false) return; // PARADA GLOBAL
 
-    std::mutex &mtx, std::vector<float> &BUFFER
-    int idx = -1; // -1 para corrigir o inicio de escrita
-    
-        
-        idx++;
-        idx = idx % ELEMENTOS_BUFFERS;
-        float escrita = numero_aleatorio_debugg();
+    static int idx = -1; // Static preserva o valor entre as chamadas da função
+    idx = (idx + 1) % ELEMENTOS_BUFFERS;
 
-        std::unique_lock<std::mutex> lock (mtx);
-        
-        //META-LOCKING
-        while((AW_NAVEGACAO + AR_NAVEGACAO) > 0){
+    std::unique_lock<std::mutex> lock(mtx);
 
-            log_message(
-                "DISTANCIA",
-                "Escritor aguardando acesso ao buffer navegacao"
-            );
-
-            WW_NAVEGACAO++;
-
-            escrita_buffer_navegacao.wait(lock);
-
-            WW_NAVEGACAO--;
-
-            log_message(
-                "DISTANCIA",
-                "Escritor retomou execução"
-            );
-        }
-
-        AW_NAVEGACAO++;
-
-        lock.unlock();
-
-        //SEÇÃO CRÍTICA
-
-        /* log_message(
-            "DISTANCIA",
-            "Escritor demora para segurar acesso ao BUFFER_NAVEGACAO"
-        );
-
-        std::this_thread::sleep_for(std::chrono::seconds(1)); */
-
-        BUFFER[idx] = escrita;
-
-        //SEÇÃO CRÍTICA
-
-        lock.lock();
-
-        AW_NAVEGACAO--;
-
-        if(WW_NAVEGACAO > 0){
-            escrita_buffer_navegacao.notify_one();
-        }
-
-        else if(WR_NAVEGACAO > 0){
-            leitura_buffer_navegacao.notify_all();
-        }
-        
-        lock.unlock();
-
-        log_message(
-            "DISTANCIA",
-            "Posição escrita (navegação): " + std::to_string(escrita)
-        );
-
-        if (false){
-            t1->async_wait(boost::asio::bind_executor(
-                    strand, std::bind(
-                    distancia_percorrida, 
-                    std::placeholders::_1, 
-                    t1, 
-                    strand,
-                    std::ref(mtx),
-                    std::ref(BUFFER))));
-        }
-}
-
-void reconstrucao_teto(std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, std::vector <float> &BUFFER_NAVEGACAO, std::vector <float> &BUFFER_NIVEL, MemoriaCompartilhada* shm){
-
-    log_message("RECONSTRUCAO", "Thread inicializada");
-
-    int idx_navegacao = -1;
-    int idx_nivel = -1;
-    
-    for (int i = 0; i<20; i++){ //No final será trocado para while true
-        
-        idx_navegacao++;
-        idx_navegacao = idx_navegacao % ELEMENTOS_BUFFERS;
-
-        std::unique_lock<std::mutex> lock_navegacao(mtx_navegacao);
-
-        while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
-
-            log_message(
-                "RECONSTRUCAO",
-                "Leitor aguardando acesso ao buffer navegacao"
-            );
-
-            WR_NAVEGACAO++;
-
-            leitura_buffer_navegacao.wait(lock_navegacao);
-
-            WR_NAVEGACAO--;
-
-            log_message(
-                "RECONSTRUCAO",
-                "Leitor retomou execução"
-            );
-        }
-
-        AR_NAVEGACAO++;
-
-        lock_navegacao.unlock();
-
-        //SEÇÃO CRÍTICA NAVEGACAO
-
-        float leitura_navegacao = BUFFER_NAVEGACAO[idx_navegacao];
-
-        //SEÇÃO CRÍTICA NAVEGACAO
-
-        lock_navegacao.lock();
-
-        AR_NAVEGACAO--;
-
-        if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0){
-            escrita_buffer_navegacao.notify_one();
-        }
-
-        lock_navegacao.unlock();
-
-        idx_nivel++;
-        idx_nivel = idx_nivel % ELEMENTOS_BUFFERS;
-
-        float escrita = leitura_navegacao + numero_aleatorio_debugg();
-
-        std::unique_lock<std::mutex> lock_nivel (mtx_nivel);
-        
-        while(dados_nivel >= 10){
-            
-            log_message(
-                "RECONSTRUCAO",
-                "Buffer de nível cheio -> produtor aguardando espaço"
-            );
-
-            escrita_buffer_nivel.wait(lock_nivel);
-
-            log_message(
-                "RECONSTRUCAO",
-                "Espaço do buffer de nível liberado -> produtor retomou execução"
-            );
-        }   
-
-        //SEÇÃO CRÍTICA NÍVEL
-        BUFFER_NIVEL[idx_nivel] = escrita;
-        dados_nivel++;
-
-        log_message(
-            "RECONSTRUCAO",
-            "Posição escrita (nível): " + std::to_string(escrita) +
-            " | Ocupação: " + std::to_string(dados_nivel) + "/" +
-            std::to_string(ELEMENTOS_BUFFERS)
-        );
-        //SEÇÃO CRÍTICA NÍVEL
-
-        leitura_buffer_nivel.notify_one();
-        lock_nivel.unlock();
-
-        bool encontrou_falha = (i==5); // teste
-
-        if(encontrou_falha){
-
-            std::lock_guard<std::mutex> lock_camera(mtx_camera);
-
-            shm->e_inspecao = true;
-            shm->o_liga_camera = true;
-            shm->j_sp_velocidade = 10;
-
-            eventos_camera++;
-
-            log_message(
-                "RECONSTRUCAO",
-                "Falha detectada -> câmera acionada e velocidade reduzida"
-            );
-
-            camera.notify_one();
-        }
+    while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
+        log_message("CONTROLE", "Leitor aguardando acesso ao buffer navegacao");
+        WR_NAVEGACAO++;
+        leitura_buffer_navegacao.wait(lock);
+        WR_NAVEGACAO--;
     }
 
+    AR_NAVEGACAO++;
+    lock.unlock();
+
+    // SEÇÃO CRÍTICA
+    float leitura = BUFFER[idx];
+    // SEÇÃO CRÍTICA
+
+    lock.lock();
+    AR_NAVEGACAO--;
+    if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0){
+        escrita_buffer_navegacao.notify_one();
+    }
+    lock.unlock();
+
+    log_message("CONTROLE", "Posição lida (navegação): " + std::to_string(leitura));
+
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(30));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(controle_navegacao, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
+}
+
+void distancia_percorrida(const boost::system::error_code& e,
+                          boost::asio::steady_timer* t, 
+                          boost::asio::io_context::strand* strand, 
+                          std::mutex &mtx, 
+                          std::vector<float> &BUFFER,
+                          MemoriaCompartilhada* shm)
+{
+    if (e) return;
+    if (shm->c_automatico == false) return; // PARADA GLOBAL
+
+    static int idx = -1; 
+    idx = (idx + 1) % ELEMENTOS_BUFFERS;
+    float escrita = numero_aleatorio_debugg();
+
+    std::unique_lock<std::mutex> lock(mtx);
+    
+    // META-LOCKING
+    while((AW_NAVEGACAO + AR_NAVEGACAO) > 0){
+        log_message("DISTANCIA", "Escritor aguardando acesso ao buffer navegacao");
+        WW_NAVEGACAO++;
+        escrita_buffer_navegacao.wait(lock);
+        WW_NAVEGACAO--;
+    }
+
+    AW_NAVEGACAO++;
+    lock.unlock();
+
+    // SEÇÃO CRÍTICA
+    BUFFER[idx] = escrita;
+    // SEÇÃO CRÍTICA
+
+    lock.lock();
+    AW_NAVEGACAO--;
+
+    if(WW_NAVEGACAO > 0) escrita_buffer_navegacao.notify_one();
+    else if(WR_NAVEGACAO > 0) leitura_buffer_navegacao.notify_all();
+    
+    lock.unlock();
+
+    log_message("DISTANCIA", "Posição escrita (navegação): " + std::to_string(escrita));
+
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(20));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(distancia_percorrida, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
+}
+
+void reconstrucao_teto(const boost::system::error_code& e,
+                       boost::asio::steady_timer* t, 
+                       boost::asio::io_context::strand* strand,
+                       std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, 
+                       std::vector<float> &BUFFER_NAVEGACAO, std::vector<float> &BUFFER_NIVEL, 
+                       MemoriaCompartilhada* shm)
+{
+    if (e) return;
+    if (shm->c_automatico == false) return; // PARADA GLOBAL
+
+    static int idx_navegacao = -1;
+    static int idx_nivel = -1;
+    
+    idx_navegacao = (idx_navegacao + 1) % ELEMENTOS_BUFFERS;
+
+    std::unique_lock<std::mutex> lock_navegacao(mtx_navegacao);
+    while((AW_NAVEGACAO + WW_NAVEGACAO) > 0){
+        WR_NAVEGACAO++;
+        leitura_buffer_navegacao.wait(lock_navegacao);
+        WR_NAVEGACAO--;
+    }
+    AR_NAVEGACAO++;
+    lock_navegacao.unlock();
+
+    float leitura_navegacao = BUFFER_NAVEGACAO[idx_navegacao];
+
+    lock_navegacao.lock();
+    AR_NAVEGACAO--;
+    if(AR_NAVEGACAO == 0 && WW_NAVEGACAO > 0) escrita_buffer_navegacao.notify_one();
+    lock_navegacao.unlock();
+
+    idx_nivel = (idx_nivel + 1) % ELEMENTOS_BUFFERS;
+    float escrita = leitura_navegacao + numero_aleatorio_debugg();
+
+    std::unique_lock<std::mutex> lock_nivel(mtx_nivel);
+    while(dados_nivel >= 10){
+        escrita_buffer_nivel.wait(lock_nivel);
+    } 
+
+    BUFFER_NIVEL[idx_nivel] = escrita;
+    dados_nivel++;
+    log_message("RECONSTRUCAO", "Ocupação Nível: " + std::to_string(dados_nivel) + "/" + std::to_string(ELEMENTOS_BUFFERS));
+
+    leitura_buffer_nivel.notify_one();
+    lock_nivel.unlock();
+
+    // Simulação de falha (ajustada para ocorrer aleatoriamente, já que não temos o loop 'i')
+    bool encontrou_falha = (numero_aleatorio_debugg() > 95.0f); 
+
+    if(encontrou_falha){
         std::lock_guard<std::mutex> lock_camera(mtx_camera);
-        finalizar_camera = true;
+        shm->e_inspecao = true;
+        shm->o_liga_camera = true;
+        shm->j_sp_velocidade = 10;
+        eventos_camera++;
 
-    camera.notify_one();
-
-    log_message("RECONSTRUCAO", "Thread finalizada");
-}
-
-void coletor_dados(std::mutex &mtx, std::vector <float> &BUFFER){
-
-    log_message(
-        "COLETOR",
-        "Thread inicializada"
-    );
-
-    int idx = -1; // -1 para corrigir o inicio de leitura do vetor
-
-    for (int i = 0; i<20; i++){
-        
-        idx++;
-        idx = idx%ELEMENTOS_BUFFERS;
-        
-        std::unique_lock<std::mutex> lock (mtx);
-
-        while(dados_nivel == 0){
-
-            log_message(
-                "COLETOR",
-                "Buffer de nível vazio -> aguardando dados"
-            );
-
-            leitura_buffer_nivel.wait(lock);
-        }
-        //SEÇÃO CRÍTICA
-        log_message(
-            "COLETOR",
-            "Posição lida (nível): " + std::to_string(BUFFER[idx])
-        );
-        dados_nivel--;
-        escrita_buffer_nivel.notify_one();
-        //SEÇÃO CRÍTICA
-
-        lock.unlock();
-
-        // teste de buffer cheio
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        //std::this_thread::sleep_for (std::chrono::microseconds(50));
-
+        log_message("RECONSTRUCAO", "Falha detectada -> câmera acionada e velocidade reduzida");
     }
 
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(100));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(reconstrucao_teto, std::placeholders::_1, t, strand, 
+                  std::ref(mtx_navegacao), std::ref(mtx_nivel), std::ref(mtx_camera), 
+                  std::ref(BUFFER_NAVEGACAO), std::ref(BUFFER_NIVEL), shm)));
 }
 
-void inspecao_camera(const boost::system::error_code& /*e*/,
-           boost::asio::steady_timer* t, 
-           boost::asio::io_context::strand* strand,
-           std::mutex& mtx, MemoriaCompartilhada* shm){
+void coletor_dados(const boost::system::error_code& e,
+                   boost::asio::steady_timer* t, 
+                   boost::asio::io_context::strand* strand,
+                   std::mutex &mtx, std::vector<float> &BUFFER,
+                   MemoriaCompartilhada* shm)
+{
+    if (e) return;
+    if (shm->c_automatico == false) return; // PARADA GLOBAL
 
-        std::unique_lock<std::mutex> lock(mtx); // Protocolo de entrada
+    static int idx = -1;
+    idx = (idx + 1) % ELEMENTOS_BUFFERS;
 
-        while(!(eventos_camera > 0 || finalizar_camera)){
-            camera.wait(lock); // Espera até que haja uma falha para inspecionar
-        }
+    std::unique_lock<std::mutex> lock(mtx);
 
-        if (eventos_camera == 0 && finalizar_camera) {
-            break;
-        }
+    while(dados_nivel == 0){
+        leitura_buffer_nivel.wait(lock);
+    }
 
+    log_message("COLETOR", "Posição lida (nível): " + std::to_string(BUFFER[idx]));
+    dados_nivel--;
+    escrita_buffer_nivel.notify_one();
+    
+    lock.unlock();
+
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(50));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(coletor_dados, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
+}
+
+void inspecao_camera(const boost::system::error_code& e,
+                     boost::asio::steady_timer* t, 
+                     boost::asio::io_context::strand* strand,
+                     std::mutex& mtx, MemoriaCompartilhada* shm)
+{
+    if (e) return;
+    if (shm->c_automatico == false) return; // PARADA GLOBAL
+
+    std::unique_lock<std::mutex> lock(mtx);
+
+    // Substituição da condition_variable: 
+    // Em vez de bloquear a thread do Asio esperando a falha, verificamos rapidamente.
+    // Se não houver eventos, saímos e o timer tenta de novo depois.
+    if (eventos_camera > 0) {
         eventos_camera--;
-
+        
         log_message("CAMERA", "Inspeção iniciada");
-        //inspeciona...
-
+        // ... tempo de inspeção ...
         shm->o_liga_camera = false;
         shm->e_inspecao = false;
-
         log_message("CAMERA", "Inspeção finalizada");
-        lock.unlock(); // Protocolo de saída
-
     }
+
+    lock.unlock(); 
+
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(20));
+    t->async_wait(boost::asio::bind_executor(*strand, 
+        std::bind(inspecao_camera, std::placeholders::_1, t, strand, std::ref(mtx), shm)));
+}
