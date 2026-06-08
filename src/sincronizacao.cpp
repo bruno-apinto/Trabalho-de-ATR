@@ -54,12 +54,13 @@ void comando_navegacao(const boost::system::error_code& e,
         return;
     }
 
-    std::cout << "Processo comando navegação executando...\n";
+    //std::cout << "Processo comando navegação executando...\n";
     
     // Atualiza tempo e reagenda
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(80));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_COMANDO));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(comando_navegacao, std::placeholders::_1, t, strand, shm)));
+
 }
 
 void controle_navegacao(const boost::system::error_code& e,
@@ -72,7 +73,7 @@ void controle_navegacao(const boost::system::error_code& e,
     if (e) return;
     if (shm->c_automatico == false) return; // PARADA GLOBAL
 
-    static int idx = -1; // Static preserva o valor entre as chamadas da função
+    int idx = -1; // Static preserva o valor entre as chamadas da função
     idx = (idx + 1) % ELEMENTOS_BUFFERS;
 
     std::unique_lock<std::mutex> lock(mtx);
@@ -100,7 +101,7 @@ void controle_navegacao(const boost::system::error_code& e,
 
     log_message("CONTROLE", "Posição lida (navegação): " + std::to_string(leitura));
 
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(30));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_CONTROLE));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(controle_navegacao, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
 }
@@ -146,7 +147,7 @@ void distancia_percorrida(const boost::system::error_code& e,
 
     log_message("DISTANCIA", "Posição escrita (navegação): " + std::to_string(escrita));
 
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(20));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_DISTANCIA));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(distancia_percorrida, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
 }
@@ -198,7 +199,7 @@ void reconstrucao_teto(const boost::system::error_code& e,
     lock_nivel.unlock();
 
     // Simulação de falha (ajustada para ocorrer aleatoriamente, já que não temos o loop 'i')
-    bool encontrou_falha = (numero_aleatorio_debugg() > 95.0f); 
+    bool encontrou_falha = false; 
 
     if(encontrou_falha){
         std::lock_guard<std::mutex> lock_camera(mtx_camera);
@@ -210,7 +211,7 @@ void reconstrucao_teto(const boost::system::error_code& e,
         log_message("RECONSTRUCAO", "Falha detectada -> câmera acionada e velocidade reduzida");
     }
 
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(100));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_RECONSTRUCAO));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(reconstrucao_teto, std::placeholders::_1, t, strand, 
                   std::ref(mtx_navegacao), std::ref(mtx_nivel), std::ref(mtx_camera), 
@@ -241,7 +242,7 @@ void coletor_dados(const boost::system::error_code& e,
     
     lock.unlock();
 
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(50));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_COLETOR));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(coletor_dados, std::placeholders::_1, t, strand, std::ref(mtx), std::ref(BUFFER), shm)));
 }
@@ -271,7 +272,7 @@ void inspecao_camera(const boost::system::error_code& e,
 
     lock.unlock(); 
 
-    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(20));
+    t->expires_at(t->expiry() + boost::asio::chrono::microseconds(PERIODO_CAMERA));
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(inspecao_camera, std::placeholders::_1, t, strand, std::ref(mtx), shm)));
 }

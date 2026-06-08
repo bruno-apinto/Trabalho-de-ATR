@@ -1,6 +1,8 @@
 #ifndef SHARED_MEMORY_HPP
 #define SHARED_MEMORY_HPP
 
+#include "include/includes.hpp"
+
 struct MemoriaCompartilhada {
 
     //sensores e atuadores disponíveis no carrinho:

@@ -39,6 +39,7 @@ int main() {
     // 2. CRIAÇÃO DE PROCESSOS (FORK)
     // =========================================================================
     
+    /*
     // --- PROCESSO 1: INTERFACE PYGAME ---
     pid_t pid_interface = fork();
     if (pid_interface == 0) {
@@ -50,9 +51,14 @@ int main() {
         perror("Erro ao criar processo da interface");
         exit(1);
     }
+    */
 
     // --- PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI) ---
     pid_t pid_controle = fork();
+
+    // Diretivas de Sincronização Isoladas para o Filho
+    boost::asio::io_context io_geral;
+    boost::asio::io_context::strand strand_geral(io_geral);
 
     if (pid_controle == 0) {
         // ---------------------------------------------------------------------
@@ -60,19 +66,15 @@ int main() {
         // ---------------------------------------------------------------------
         log_message("PROCESSO", "Processo comando_navegacao criado");
 
-        // Diretivas de Sincronização Isoladas para o Filho
-        boost::asio::io_context io_comando;
-        boost::asio::io_context::strand strand_comando(io_comando);
-
-        tempo_tarefa t_comando(io_comando, microssegundos(80));
-        t_comando.async_wait(boost::asio::bind_executor(strand_comando, 
-            std::bind(comando_navegacao, std::placeholders::_1, &t_comando, &strand_comando, shm)));
+        tempo_tarefa t_comando(io_geral, microssegundos(500));
+        t_comando.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(comando_navegacao, std::placeholders::_1, &t_comando, &strand_geral, shm)));
 
         shm->c_automatico = true;
         shm->j_sp_velocidade = 50;
 
         // Inicia o processamento da fila de tarefas do filho
-        io_comando.run(); 
+        //io_geral.run(); 
 
         // Limpeza do filho (só chega aqui se o loop do io.run() for interrompido)
         shmdt(shm);
@@ -96,40 +98,35 @@ int main() {
         std::mutex mutex_nivel;
         std::mutex mutex_camera;
 
-        // Diretivas de Sincronização Isoladas para o Pai
-        boost::asio::io_context io_controle;
-        boost::asio::io_context::strand strand_controle(io_controle);
-
         // --- DEFINIÇÃO DOS TEMPORIZADORES (TIMERS) ---
-        // Você pode ajustar os tempos (20, 50, 100) conforme a necessidade de cada tarefa
-        tempo_tarefa t1_dist(io_controle, microssegundos(20));
-        tempo_tarefa t2_cam(io_controle, microssegundos(20));
-        tempo_tarefa t3_col(io_controle, microssegundos(50));
-        tempo_tarefa t4_rec(io_controle, microssegundos(100));
-        tempo_tarefa t5_nav(io_controle, microssegundos(30));
+        tempo_tarefa t1_dist(io_geral, microssegundos(PERIODO_DISTANCIA));
+        tempo_tarefa t2_cam(io_geral, microssegundos(PERIODO_CAMERA));
+        tempo_tarefa t3_col(io_geral, microssegundos(PERIODO_COLETOR));
+        tempo_tarefa t4_rec(io_geral, microssegundos(PERIODO_RECONSTRUCAO));
+        tempo_tarefa t5_con(io_geral, microssegundos(PERIODO_CONTROLE));
 
         // --- AGENDAMENTO DAS TAREFAS (ASYNC_WAIT) ---
         log_message("MAIN", "Agendando tarefas assíncronas...");
 
-        t1_dist.async_wait(boost::asio::bind_executor(strand_controle, 
-            std::bind(distancia_percorrida, std::placeholders::_1, &t1_dist, &strand_controle, 
+        t1_dist.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(distancia_percorrida, std::placeholders::_1, &t1_dist, &strand_geral, 
                       std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
 
-        t2_cam.async_wait(boost::asio::bind_executor(strand_controle, 
-            std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_controle, 
+        t2_cam.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_geral, 
                       std::ref(mutex_camera), shm)));
 
-        t3_col.async_wait(boost::asio::bind_executor(strand_controle, 
-            std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_controle, 
+        t3_col.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_geral, 
                       std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm)));
 
-        t4_rec.async_wait(boost::asio::bind_executor(strand_controle, 
-            std::bind(reconstrucao_teto, std::placeholders::_1, &t4_rec, &strand_controle, 
+        t4_rec.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(reconstrucao_teto, std::placeholders::_1, &t4_rec, &strand_geral, 
                       std::ref(mutex_navegacao), std::ref(mutex_nivel), std::ref(mutex_camera), 
                       std::ref(BUFFER_NAVEGACAO), std::ref(BUFFER_NIVEL), shm)));
 
-        t5_nav.async_wait(boost::asio::bind_executor(strand_controle, 
-            std::bind(controle_navegacao, std::placeholders::_1, &t5_nav, &strand_controle, 
+        t5_con.async_wait(boost::asio::bind_executor(strand_geral, 
+            std::bind(controle_navegacao, std::placeholders::_1, &t5_con, &strand_geral, 
                       std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
 
         // --- EXECUÇÃO (THREAD POOL) ---
@@ -139,21 +136,26 @@ int main() {
         
         log_message("MAIN", "Iniciando Thread Pool do Boost.Asio");
         for (int i = 0; i < num_threads; ++i) {
-            thread_pool.emplace_back([&io_controle]() {
-                io_controle.run();
+            thread_pool.emplace_back([&io_geral]() {
+                io_geral.run();
             });
         }
+
+        //Simular desligamento
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        shm->c_automatico = false;
 
         // --- SINCRONIZAÇÃO FINAL (Aguardar encerramento) ---
         for (auto& t : thread_pool) {
             if (t.joinable()) {
                 t.join();
+                std::cout << "Esperando join...\n";
             }
         }
         
         // Só espera os processos filhos acabarem DEPOIS que as tarefas terminarem
         waitpid(pid_controle, nullptr, 0);
-        waitpid(pid_interface, nullptr, 0);
+        //waitpid(pid_interface, nullptr, 0);
 
         log_message("MAIN", "Execução finalizada. Limpando memória.");
 

@@ -6,6 +6,13 @@
 
 #define ELEMENTOS_BUFFERS 10
 
+#define PERIODO_COMANDO 500
+#define PERIODO_CONTROLE 80
+#define PERIODO_DISTANCIA 20
+#define PERIODO_CAMERA 20
+#define PERIODO_COLETOR 500
+#define PERIODO_RECONSTRUCAO 80
+
 typedef boost::asio::steady_timer tempo_tarefa;
 typedef boost::asio::chrono::microseconds microssegundos;
 
