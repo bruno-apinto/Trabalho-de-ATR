@@ -4,7 +4,7 @@ CXX = g++
 
 CXXFLAGS = -std=c++17 -I. -Iinclude -I/opt/homebrew/include -pthread
 
-SRCS = main.cpp src/sincronizacao.cpp src/simulacao.cpp
+SRCS = src/sincronizacao.cpp src/simulacao.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 

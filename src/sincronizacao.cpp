@@ -1,5 +1,27 @@
 #include "../include/sincronizacao.hpp"
 
+const int SHM_SIZE = 1024; // Size of the shared memory segment
+
+// Sincronização e Condições
+std::condition_variable camera;
+int eventos_camera = 0;
+
+// Variaveis de condição buffers (Mantidas para controle de fluxo rápido)
+std::condition_variable leitura_buffer_navegacao;
+std::condition_variable escrita_buffer_navegacao;
+
+int AR_NAVEGACAO = 0;
+int WR_NAVEGACAO = 0;
+int AW_NAVEGACAO = 0;
+int WW_NAVEGACAO = 0;
+
+std::condition_variable leitura_buffer_nivel; 
+std::condition_variable escrita_buffer_nivel;
+int dados_nivel = 0;
+
+// Funções auxiliares de debbug
+std::mutex mutex_log;
+
 void log_message(const std::string& thread, const std::string& mensagem){
     std::lock_guard<std::mutex> lock(mutex_log);
     auto agora = std::chrono::system_clock::now();

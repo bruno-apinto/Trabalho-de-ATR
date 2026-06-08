@@ -4,6 +4,7 @@
 #include "include/simulacao.hpp"
 
 int main() {
+    
     simulacao();
 
     // =========================================================================
@@ -112,15 +113,15 @@ int main() {
 
         t1_dist.async_wait(boost::asio::bind_executor(strand_controle, 
             std::bind(distancia_percorrida, std::placeholders::_1, &t1_dist, &strand_controle, 
-                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO))));
+                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
 
         t2_cam.async_wait(boost::asio::bind_executor(strand_controle, 
             std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_controle, 
-                      std::ref(mutex_camera), std::ref(BUFFER_NAVEGACAO))));
+                      std::ref(mutex_camera), shm)));
 
         t3_col.async_wait(boost::asio::bind_executor(strand_controle, 
             std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_controle, 
-                      std::ref(mutex_nivel), std::ref(BUFFER_NIVEL))));
+                      std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm)));
 
         t4_rec.async_wait(boost::asio::bind_executor(strand_controle, 
             std::bind(reconstrucao_teto, std::placeholders::_1, &t4_rec, &strand_controle, 
@@ -129,7 +130,7 @@ int main() {
 
         t5_nav.async_wait(boost::asio::bind_executor(strand_controle, 
             std::bind(controle_navegacao, std::placeholders::_1, &t5_nav, &strand_controle, 
-                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO))));
+                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
 
         // --- EXECUÇÃO (THREAD POOL) ---
         // Cria um grupo de operários para processar o io_context em paralelo

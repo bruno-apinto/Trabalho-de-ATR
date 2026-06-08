@@ -9,28 +9,6 @@
 typedef boost::asio::steady_timer tempo_tarefa;
 typedef boost::asio::chrono::microseconds microssegundos;
 
-const int SHM_SIZE = 1024; // Size of the shared memory segment
-
-// Sincronização e Condições
-std::condition_variable camera;
-int eventos_camera = 0;
-
-// Variaveis de condição buffers (Mantidas para controle de fluxo rápido)
-std::condition_variable leitura_buffer_navegacao;
-std::condition_variable escrita_buffer_navegacao;
-
-int AR_NAVEGACAO = 0;
-int WR_NAVEGACAO = 0;
-int AW_NAVEGACAO = 0;
-int WW_NAVEGACAO = 0;
-
-std::condition_variable leitura_buffer_nivel; 
-std::condition_variable escrita_buffer_nivel;
-int dados_nivel = 0;
-
-// Funções auxiliares de debbug
-std::mutex mutex_log;
-
 void log_message (const std::string& thread, const std::string& mensagem);
 float numero_aleatorio_debugg();
 
@@ -84,7 +62,7 @@ void reconstrucao_teto(const boost::system::error_code& e,
                        boost::asio::io_context::strand* strand,
                        std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, 
                        std::vector<float> &BUFFER_NAVEGACAO, std::vector<float> &BUFFER_NIVEL, 
-                       MemoriaCompartilhada* shm)
+                       MemoriaCompartilhada* shm);
 
 /**
  * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER_NIVEL.
