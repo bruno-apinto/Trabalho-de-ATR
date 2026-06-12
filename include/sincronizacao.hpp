@@ -9,9 +9,32 @@
 #define PERIODO_COMANDO 500
 #define PERIODO_CONTROLE 80
 #define PERIODO_DISTANCIA 20
-#define PERIODO_CAMERA 20
+#define PERIODO_CAMERA 80
 #define PERIODO_COLETOR 500
 #define PERIODO_RECONSTRUCAO 80
+
+struct VarCondSinc {
+    // === BUFFER 1: NAVEGAÇÃO ===
+    std::vector<float> BUFFER_NAVEGACAO = std::vector<float>(ELEMENTOS_BUFFERS);
+    int ESC_IDX_NAVEG = 0;     // Onde o produtor escreve
+    int LER_IDX_NAVEG_C = 0;   // Onde o Controle lê
+    int LER_IDX_NAVEG_R = 0;   // Onde a Reconstrução lê
+    
+    int disp_naveg_c = 0;      // Quantidade de dados pendentes para o Controle
+    int disp_naveg_r = 0;      // Quantidade de dados pendentes para a Reconstrução
+    std::mutex mtx_navegacao;  // Proteção exclusiva deste buffer
+
+    // === BUFFER 2: NÍVEL ===
+    std::vector<float> BUFFER_NIVEL = std::vector<float>(ELEMENTOS_BUFFERS);
+    int ESC_IDX_NIVEL = 0;     // Onde a Reconstrução escreve
+    int LER_IDX_NIVEL = 0;     // Onde o Coletor lê
+    
+    int disp_nivel = 0;        // Quantidade de dados pendentes para o Coletor
+    std::mutex mtx_nivel;      // Proteção exclusiva deste buffer
+
+    // === CÂMERA ===
+    std::mutex mutex_camera;
+};
 
 typedef boost::asio::steady_timer tempo_tarefa;
 typedef boost::asio::chrono::microseconds microssegundos;
@@ -40,10 +63,7 @@ void comando_navegacao(const boost::system::error_code& /*e*/,
 void controle_navegacao(const boost::system::error_code& e,
                         boost::asio::steady_timer* t, 
                         boost::asio::io_context::strand* strand,
-                        std::mutex &mtx, 
-                        std::vector<float> &BUFFER,
-                        MemoriaCompartilhada* shm);
-
+                        MemoriaCompartilhada* shm, VarCondSinc &sinc);
 /**
  * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER_NAVEGACAO.
  * 
@@ -53,9 +73,7 @@ void controle_navegacao(const boost::system::error_code& e,
 void distancia_percorrida(const boost::system::error_code& e,
                           boost::asio::steady_timer* t, 
                           boost::asio::io_context::strand* strand, 
-                          std::mutex &mtx, 
-                          std::vector<float> &BUFFER,
-                          MemoriaCompartilhada* shm);
+                          MemoriaCompartilhada* shm, VarCondSinc &sinc);
 
 /**
  * @brief Recebe os valores do lidar para reconstruir o teto do túnel. Atua como
@@ -67,9 +85,7 @@ void distancia_percorrida(const boost::system::error_code& e,
 void reconstrucao_teto(const boost::system::error_code& e,
                        boost::asio::steady_timer* t, 
                        boost::asio::io_context::strand* strand,
-                       std::mutex &mtx_navegacao, std::mutex &mtx_nivel, std::mutex &mtx_camera, 
-                       std::vector<float> &BUFFER_NAVEGACAO, std::vector<float> &BUFFER_NIVEL, 
-                       MemoriaCompartilhada* shm);
+                       MemoriaCompartilhada* shm, VarCondSinc &sinc);
 
 /**
  * @brief Registra os dados coletados pelo lidar num Banco de Dados. Atua como LEITOR do BUFFER_NIVEL.
@@ -80,8 +96,7 @@ void reconstrucao_teto(const boost::system::error_code& e,
 void coletor_dados(const boost::system::error_code& e,
                    boost::asio::steady_timer* t, 
                    boost::asio::io_context::strand* strand,
-                   std::mutex &mtx, std::vector<float> &BUFFER,
-                   MemoriaCompartilhada* shm);
+                   MemoriaCompartilhada* shm, VarCondSinc &sinc);
 
 void inspecao_camera(const boost::system::error_code& e,
                      boost::asio::steady_timer* t, 

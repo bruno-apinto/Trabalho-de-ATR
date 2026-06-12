@@ -53,116 +53,127 @@ int main() {
     }
     */
 
-    // --- PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI) ---
-    pid_t pid_controle = fork();
+ // --- PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI) ---
+pid_t pid_controle = fork();
 
-    // Diretivas de Sincronização Isoladas para o Filho
-    boost::asio::io_context io_geral;
-    boost::asio::io_context::strand strand_geral(io_geral);
+if (pid_controle == 0) {
+    // ---------------------------------------------------------------------
+    // BLOCO DO FILHO: COMANDO DE NAVEGAÇÃO
+    // ---------------------------------------------------------------------
+    log_message("PROCESSO", "Processo comando_navegacao criado");
 
-    if (pid_controle == 0) {
-        // ---------------------------------------------------------------------
-        // BLOCO DO FILHO: COMANDO DE NAVEGAÇÃO
-        // ---------------------------------------------------------------------
-        log_message("PROCESSO", "Processo comando_navegacao criado");
+    // 1. Instanciar o Asio APENAS para o filho
+    boost::asio::io_context io_filho;
+    boost::asio::io_context::strand strand_filho(io_filho);
 
-        tempo_tarefa t_comando(io_geral, microssegundos(500));
-        t_comando.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(comando_navegacao, std::placeholders::_1, &t_comando, &strand_geral, shm)));
+    tempo_tarefa t_comando(io_filho, microssegundos(500));
+    t_comando.async_wait(boost::asio::bind_executor(strand_filho, 
+        std::bind(comando_navegacao, std::placeholders::_1, &t_comando, &strand_filho, shm)));
 
-        shm->c_automatico = true;
-        shm->j_sp_velocidade = 50;
+    shm->c_automatico = true;
+    shm->j_sp_velocidade = 50;
 
-        // Inicia o processamento da fila de tarefas do filho
-        //io_geral.run(); 
+    // 2. Iniciar o laço de eventos do filho (Descomentado)
+    // Se não chamar run(), as tarefas do filho nunca vão executar!
+    io_filho.run(); 
 
-        // Limpeza do filho (só chega aqui se o loop do io.run() for interrompido)
-        shmdt(shm);
-        exit(0); 
-    } 
-    else if (pid_controle < 0) {
-        perror("Erro ao criar processo de comando\n");
-        exit(1);
-    } 
-    else {
-        // ---------------------------------------------------------------------
-        // BLOCO DO PAI: CONTROLE DE NAVEGAÇÃO E SENSORIAMENTO
-        // ---------------------------------------------------------------------
-        log_message("PROCESSO", "Processo de controle de navegação iniciado");
+    // Limpeza do filho
+    shmdt(shm);
+    exit(0); 
+} 
+else if (pid_controle < 0) {
+    perror("Erro ao criar processo de comando\n");
+    exit(1);
+} 
+else {
+    // ---------------------------------------------------------------------
+    // BLOCO DO PAI: CONTROLE DE NAVEGAÇÃO E SENSORIAMENTO
+    // ---------------------------------------------------------------------
+    log_message("PROCESSO", "Processo de controle de navegação iniciado");
 
-        // Inicialização de Buffers e Mutexes
-        std::vector<float> BUFFER_NAVEGACAO(ELEMENTOS_BUFFERS);
-        std::vector<float> BUFFER_NIVEL(ELEMENTOS_BUFFERS);
-        
-        std::mutex mutex_navegacao;
-        std::mutex mutex_nivel;
-        std::mutex mutex_camera;
+    // 3. Instanciar o Asio isolado para o Pai
+    boost::asio::io_context io_pai;
 
-        // --- DEFINIÇÃO DOS TEMPORIZADORES (TIMERS) ---
-        tempo_tarefa t1_dist(io_geral, microssegundos(PERIODO_DISTANCIA));
-        tempo_tarefa t2_cam(io_geral, microssegundos(PERIODO_CAMERA));
-        tempo_tarefa t3_col(io_geral, microssegundos(PERIODO_COLETOR));
-        tempo_tarefa t4_rec(io_geral, microssegundos(PERIODO_RECONSTRUCAO));
-        tempo_tarefa t5_con(io_geral, microssegundos(PERIODO_CONTROLE));
+    // 4. CRIANDO MÚLTIPLAS STRANDS (Segregação de Lógica)
+    // Tarefas na mesma strand não concorrem. Strands diferentes rodam em paralelo.
+    boost::asio::io_context::strand strand_navegacao(io_pai); // Para dist e controle
+    boost::asio::io_context::strand strand_processamento(io_pai); // Para reconstrução e dados
+    boost::asio::io_context::strand strand_camera(io_pai); // Para câmera isolada
 
-        // --- AGENDAMENTO DAS TAREFAS (ASYNC_WAIT) ---
-        log_message("MAIN", "Agendando tarefas assíncronas...");
+    struct VarCondSinc sinc;
 
-        t1_dist.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(distancia_percorrida, std::placeholders::_1, &t1_dist, &strand_geral, 
-                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
+    // --- DEFINIÇÃO DOS TEMPORIZADORES (TIMERS) ---
+    tempo_tarefa t1_dist(io_pai, microssegundos(PERIODO_DISTANCIA));
+    tempo_tarefa t2_cam(io_pai, microssegundos(PERIODO_CAMERA));
+    tempo_tarefa t3_col(io_pai, microssegundos(PERIODO_COLETOR));
+    tempo_tarefa t4_rec(io_pai, microssegundos(PERIODO_RECONSTRUCAO));
+    tempo_tarefa t5_con(io_pai, microssegundos(PERIODO_CONTROLE));
 
-        t2_cam.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_geral, 
-                      std::ref(mutex_camera), shm)));
+    // --- AGENDAMENTO DAS TAREFAS (ASYNC_WAIT) ---
+    log_message("MAIN", "Agendando tarefas assíncronas...");
 
-        t3_col.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_geral, 
-                      std::ref(mutex_nivel), std::ref(BUFFER_NIVEL), shm)));
+    // Associando à Strand de Navegação (Crítica)
+    t1_dist.async_wait(boost::asio::bind_executor(strand_navegacao, 
+        std::bind(distancia_percorrida, std::placeholders::_1, &t1_dist, &strand_navegacao, shm, std::ref(sinc))));
 
-        t4_rec.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(reconstrucao_teto, std::placeholders::_1, &t4_rec, &strand_geral, 
-                      std::ref(mutex_navegacao), std::ref(mutex_nivel), std::ref(mutex_camera), 
-                      std::ref(BUFFER_NAVEGACAO), std::ref(BUFFER_NIVEL), shm)));
+    t5_con.async_wait(boost::asio::bind_executor(strand_navegacao, 
+        std::bind(controle_navegacao, std::placeholders::_1, &t5_con, &strand_navegacao, shm, std::ref(sinc))));
 
-        t5_con.async_wait(boost::asio::bind_executor(strand_geral, 
-            std::bind(controle_navegacao, std::placeholders::_1, &t5_con, &strand_geral, 
-                      std::ref(mutex_navegacao), std::ref(BUFFER_NAVEGACAO), shm)));
+    // Associando à Strand de Processamento (Menos Crítica)
+    t4_rec.async_wait(boost::asio::bind_executor(strand_processamento, 
+        std::bind(reconstrucao_teto, std::placeholders::_1, &t4_rec, &strand_processamento, shm, std::ref(sinc))));
 
-        // --- EXECUÇÃO (THREAD POOL) ---
-        // Cria um grupo de operários para processar o io_context em paralelo
-        std::vector<std::thread> thread_pool;
-        int num_threads = 4; // Ajuste conforme os núcleos disponíveis no seu sistema
-        
-        log_message("MAIN", "Iniciando Thread Pool do Boost.Asio");
-        for (int i = 0; i < num_threads; ++i) {
-            thread_pool.emplace_back([&io_geral]() {
-                io_geral.run();
-            });
-        }
+    t3_col.async_wait(boost::asio::bind_executor(strand_processamento, 
+        std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_processamento, shm, std::ref(sinc))));
 
-        //Simular desligamento
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        shm->c_automatico = false;
+    // Associando à Strand da Câmera (Isolada)
+    t2_cam.async_wait(boost::asio::bind_executor(strand_camera, 
+        std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_camera, std::ref(sinc.mutex_camera), shm)));
 
-        // --- SINCRONIZAÇÃO FINAL (Aguardar encerramento) ---
-        for (auto& t : thread_pool) {
-            if (t.joinable()) {
-                t.join();
-                std::cout << "Esperando join...\n";
-            }
-        }
-        
-        // Só espera os processos filhos acabarem DEPOIS que as tarefas terminarem
-        waitpid(pid_controle, nullptr, 0);
-        //waitpid(pid_interface, nullptr, 0);
+    // --- EXECUÇÃO (THREAD POOL) ---
+    // 5. Reativar o Pool de Threads. Com 4 threads, as nossas 3 Strands podem rodar 
+    // simultaneamente em núcleos reais do processador.
 
-        log_message("MAIN", "Execução finalizada. Limpando memória.");
-
-        // Desanexa e remove segmento de memória compartilhada
-        shmdt(shm);
-        shmctl(shmid, IPC_RMID, nullptr);
+    while (!shm->c_automatico) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     
-    return 0;
+    int num_threads = 4; 
+    std::vector<std::thread> thread_pool;
+    log_message("MAIN", "Iniciando Thread Pool do Boost.Asio com " + std::to_string(num_threads) + " threads");
+
+    for (int i = 0; i < num_threads; ++i) {
+        thread_pool.emplace_back([&io_pai]() { io_pai.run(); });
+    }
+
+    std::cout << "Sistema rodando...\n";
+
+    // Simular tempo de atividade do sistema
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    std::cout << "Iniciando processo de desligamento...\n";
+
+    // Modificar a flag faz com que os handlers das tarefas não agendem novas chamadas.
+    // Assim, a fila de tarefas do io_context esvazia naturalmente e o run() encerra.
+    shm->c_automatico = false;
+
+    // --- SINCRONIZAÇÃO FINAL ---
+    for (auto& t : thread_pool) {
+        if (t.joinable()) {
+            std::cout << "Esperando join da thread...\n";
+            t.join();
+        }
+    }
+    
+    std::cout << "Thread pool encerrada.\n";
+    
+    // Espera o processo filho acabar
+    waitpid(pid_controle, nullptr, 0);
+
+    log_message("MAIN", "Execução finalizada. Limpando memória.");
+
+    // Desanexa e remove segmento de memória compartilhada
+    shmdt(shm);
+    shmctl(shmid, IPC_RMID, nullptr);
 }
+}   
