@@ -1,7 +1,6 @@
 #include "../include/sincronizacao.hpp"
 
 #define ELEMENTOS_BUFFERS 10
-const int SHM_SIZE = 1024; // Size of the shared memory segment
 
 //sincronização
 std::condition_variable camera;
@@ -53,7 +52,19 @@ float numero_aleatorio_debugg(){
 
 //FUNÇÕES DO SISTEMA 
 
-void comando_navegacao(){
+void comando_navegacao(MemoriaCompartilhada* shm){
+
+    shm->j_sp_velocidade = 50; // teste de escrita na memória compartilhada
+    shm->c_automatico = true;
+    shm->c_man = false;
+    shm->e_automatico = true;
+
+    log_message(
+        "COMANDO",
+        std::string("Comando de navegação escreveu na memória compartilhada: ") +
+        "c_automatico = " + std::to_string(shm->c_automatico) +
+        " | j_sp_velocidade = " + std::to_string(shm->j_sp_velocidade)
+    );
 
 }
 

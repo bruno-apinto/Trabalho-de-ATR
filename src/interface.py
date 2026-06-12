@@ -1,12 +1,57 @@
 import pygame, sys
-
+import sys
+import ctypes
 from pygame.locals import *
-
+import mmap
 from pathlib import Path
+import time
 
 BASE_DIR = Path(__file__).resolve().parent
 
+SHM_FILE = "/tmp/memoria_compartilhada.bin" 
+
+class MemoriaCompartilhada(ctypes.Structure):
+    _fields_ = [
+        ("i_encoder", ctypes.c_bool),
+        ("i_lidar", ctypes.c_int),
+
+        ("o_liga_camera", ctypes.c_bool),
+        ("o_aceleracao", ctypes.c_int),
+
+        ("e_inspecao", ctypes.c_bool),
+        ("e_automatico", ctypes.c_bool),
+        ("c_automatico", ctypes.c_bool),
+        ("c_man", ctypes.c_bool),
+        ("j_sp_velocidade", ctypes.c_int),
+
+        ("c_encerrar", ctypes.c_bool),
+    ]
+
+def abrir_memoria_compartilhada(): #Abre a memória compartilhada criada pelo processo C++.
+                                   #Faz algumas tentativas porque a interface pode iniciar quase junto da criação da memória.
+    tamanho = ctypes.sizeof(MemoriaCompartilhada)
+
+    for _ in range(100):
+        try:
+            arquivo = open(SHM_FILE, "r+b")
+            mm = mmap.mmap(arquivo.fileno(), tamanho) #mapeia o arquivo em memória
+            memoria = MemoriaCompartilhada.from_buffer(mm) # interpreta a struct MemoriaCompartilhada
+
+            print("Interface conectada ao arquivo mapeado")
+
+            return arquivo, mm, memoria
+        
+        except FileNotFoundError:
+            print("Aguardando memória compartilhada ser criada pela main...")
+            time.sleep(0.1)
+
+    raise RuntimeError("Não foi possível abrir a memória compartilhada.")
+
 pygame.init()
+
+arquivo_shm, mmap_shm, memoria = abrir_memoria_compartilhada()
+
+print("Interface conectada à memória compartilhada")
 
 FPS = 30 # frames por segundo
 fpsClock = pygame.time.Clock()
@@ -30,41 +75,77 @@ carImg = pygame.image.load(str(BASE_DIR / 'carrinho.png'))
 largura_carro = carImg.get_width()
 altura_carro = carImg.get_height()
 
-# Diminuir tamanho do carro
-carImg = pygame.transform.scale(carImg, (int(largura_carro * 0.8), int(altura_carro * 0.8)))
-largura_carro = carImg.get_width()
-altura_carro = carImg.get_height()
-
 carx = 0
-cary = altura_tela // 2 - altura_carro // 2 + 82
-
-# Carregar imagens de falhas
-falha_buraco = pygame.image.load(str(BASE_DIR / 'falha_buraco.png'))
-falha_buraco = pygame.transform.scale(falha_buraco, (250, 147))
-
-falha_protuberancia = pygame.image.load(str(BASE_DIR / 'falha_protuberancia.png'))
-falha_protuberancia = pygame.transform.scale(falha_protuberancia, (250, 147))
-
-# Posições das falhas na parte superior do túnel (teto)
-falhas = [
-    {'img': falha_buraco, 'x': 300, 'y': tunel_y + 0},
-    {'img': falha_protuberancia, 'x': 700, 'y': tunel_y + 0},
-]
+cary = altura_tela // 2 - altura_carro // 2 + 65
 
 velocidade = 5
 
 andando = False
 
+def encerra_interface(): 
+    global memoria
+    try:
+        memoria.c_encerrar = True
+        memoria.j_sp_velocidade = 0
+        memoria.c_automatico = False
+        memoria.c_man = True
+    except Exception:
+        pass
+    try:
+        del memoria
+        mmap_shm.close()
+        arquivo_shm.close()
+    except Exception:
+        pass
+
+    pygame.quit()
+    sys.exit()
+
 while True: # ciclo principal
 
     for event in pygame.event.get():
         if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
+            encerra_interface()
 
         if event.type == KEYDOWN:
-            if event.key == K_SPACE:
+            if event.key == K_SPACE: # espaço: liga/desliga automático
                 andando = not andando
+
+                if andando:
+                    memoria.c_automatico = True
+                    memoria.c_man = False
+                    memoria.e_automatico = True
+
+                    if memoria.j_sp_velocidade == 0:
+                        memoria.j_sp_velocidade == 50
+                else:
+                    memoria.j_sp_velocidade = 0
+
+            # M: modo manual
+            if event.key == K_m:
+                andando = False
+
+                memoria.c_man = True
+                memoria.c_automatico = False
+                memoria.e_automatico = False
+                memoria.j_sp_velocidade = 0
+
+            # Seta para cima: aumenta setpoint de velocidade
+            if event.key == K_UP:
+                memoria.j_sp_velocidade = min(100, memoria.j_sp_velocidade + 10)
+
+            # Seta para baixo: diminui setpoint de velocidade
+            if event.key == K_DOWN:
+                memoria.j_sp_velocidade = max(0, memoria.j_sp_velocidade - 10)
+
+            # C: teste manual para ligar câmera
+            if event.key == K_c:
+                memoria.o_liga_camera = True
+
+            # I: teste manual para estado de inspeção
+            if event.key == K_i:
+                memoria.e_inspecao = not memoria.e_inspecao
+
 
     DISPLAYSURF.fill(WHITE)
 
@@ -91,15 +172,6 @@ while True: # ciclo principal
     DISPLAYSURF.blit(backImg, (tunel_x, tunel_y))
     DISPLAYSURF.blit(backImg, (tunel_x + largura_tela, tunel_y))
     DISPLAYSURF.blit(backImg, (tunel_x - largura_tela, tunel_y))
-
-    # Desenhar falhas na parte superior do túnel
-    for falha in falhas:
-        falha_x = falha['x'] + tunel_x
-        falha_y = falha['y']
-        DISPLAYSURF.blit(falha['img'], (falha_x, falha_y))
-        # Repetir falhas para o efeito de loop infinito
-        DISPLAYSURF.blit(falha['img'], (falha_x + largura_tela, falha_y))
-        DISPLAYSURF.blit(falha['img'], (falha_x - largura_tela, falha_y))
 
     DISPLAYSURF.blit(carImg, (carx, cary))
 

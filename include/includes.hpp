@@ -17,6 +17,9 @@
 #include <iomanip>
 
 #include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <sys/wait.h>
+
+#include <boost/interprocess/file_mapping.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <fstream>
+#include <cstdio>

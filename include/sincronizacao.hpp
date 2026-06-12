@@ -15,7 +15,7 @@ float numero_aleatorio_debugg();
  * automático. Exerce a função de ESCRITOR sobre o BUFFER_NAVEGACAO
  * 
  */
-void comando_navegacao();
+void comando_navegacao(MemoriaCompartilhada* shm);
 
 /**
  * @brief implementação de um controlador PID responsável pelo acionamento dos motores (controle de velocidade)

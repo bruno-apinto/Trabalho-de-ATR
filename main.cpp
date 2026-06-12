@@ -5,26 +5,33 @@
 
 int main (){
 
+    using namespace boost::interprocess;
+
     simulacao();
 
-    // Generate a unique key for the shared memory segment 
-    key_t key = IPC_PRIVATE; // Use IPC_PRIVATE for a unique key 
-    
-    // Create a shared memory segment 
-    int shmid = shmget(key, sizeof(MemoriaCompartilhada), 0666 | IPC_CREAT);
+    std::remove(SHM_FILE); // remove a memória compartilhada caso ela já exista
 
-    if (shmid < 0) {
-        perror("Erro ao criar memória compartilhada");
+    {
+    std::filebuf fbuf;
+    fbuf.open(SHM_FILE, std::ios_base::in | std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+
+    if(!fbuf.is_open()){
+        std::cerr << "Erro ao criar arquivo de memória compartilhada" << std::endl;
         return 1;
     }
 
-    // Attach to the shared memory
-    MemoriaCompartilhada* shm = (MemoriaCompartilhada*) shmat(shmid, nullptr, 0);
+    fbuf.pubseekoff(sizeof(MemoriaCompartilhada)-1, std::ios_base::beg);
+    fbuf.sputc(0);
+    fbuf.close();
+    } // cria arquivo que será mapeado na memória
 
-    if (shm == (void*) -1) {
-        perror("Erro ao anexar memória compartilhada");
-        return 1;
-    }
+    std::cout << "Arquivo de memória criado em: " << SHM_FILE << std::endl;
+    std::cout << "Tamanho da struct C++: " << sizeof(MemoriaCompartilhada) << " bytes" << std::endl;
+
+    file_mapping shm_file(SHM_FILE, read_write);
+    mapped_region region(shm_file, read_write); // mapeia o arquivo no espaço de memória
+
+    MemoriaCompartilhada* shm = static_cast<MemoriaCompartilhada*>(region.get_address());
 
     // Inicializa os valores da memória compartilhada
     shm->i_encoder = false;
@@ -39,6 +46,8 @@ int main (){
     shm->c_automatico = false;
     shm->c_man = false;
     shm->j_sp_velocidade = 0;
+
+    shm->c_encerrar = false;
 
     pid_t pid_interface = fork();
 
@@ -68,18 +77,18 @@ int main (){
                 "Processo comando_navegacao criado"
             );
 
-            comando_navegacao ();
+            file_mapping shm_child(SHM_FILE, read_write); // abre a memória compartilhada criada
 
-            // Exemplo: filho escreve comando remoto
-            shm->c_automatico = true;
-            shm->j_sp_velocidade = 50;
+            mapped_region region_child(shm_child, read_write);
+            MemoriaCompartilhada* shm_filho = static_cast<MemoriaCompartilhada*>(region_child.get_address());
+
+            comando_navegacao (shm_filho);
 
             std::cout << "Comando de navegação escreveu na memória compartilhada:" << std::endl;
-            std::cout << "c_automatico = " << shm->c_automatico << std::endl;
-            std::cout << "j_sp_velocidade = " << shm->j_sp_velocidade << std::endl;
+            std::cout << "c_automatico = " << shm_filho->c_automatico << std::endl;
+            std::cout << "j_sp_velocidade = " << shm_filho->j_sp_velocidade << std::endl;
 
-            // Desanexa memória no filho
-            shmdt(shm);
+            return 0;
     }
 
     else if (pid < 0){
@@ -89,7 +98,7 @@ int main (){
 
     else {
 
-            wait(nullptr);
+        waitpid(pid, nullptr, 0); // espera o processo filho terminar
 
         std::cout << "Controle de navegação lendo memória compartilhada:" << std::endl;
         std::cout << "c_automatico = " << shm->c_automatico << std::endl;
@@ -201,10 +210,7 @@ int main (){
    }
 
     // Desanexa memória no pai
-    shmdt(shm);
-
-    // Remove segmento de memória compartilhada
-    shmctl(shmid, IPC_RMID, nullptr);
+    //std::remove(SHM_FILE); 
 
     return 0;
 }
