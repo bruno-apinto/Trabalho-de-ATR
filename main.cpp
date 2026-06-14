@@ -115,6 +115,17 @@ int main (){
         std::mutex mutex_navegacao;
         std::mutex mutex_nivel;
         std::mutex mutex_camera;
+        std::mutex shm_mutex;
+
+        // Inicializar MQTT Manager para comunicação com operação remota
+        MQTTManager mqtt_manager(shm, shm_mutex);
+        
+        log_message("MAIN", "Inicializando MQTT Manager...");
+        if (mqtt_manager.initialize()) {
+            log_message("MAIN", "MQTT Manager inicializado com sucesso");
+        } else {
+            log_message("MAIN", "Falha ao inicializar MQTT Manager - continuando sem MQTT");
+        }
 
         std::vector <std::thread> threads_navegacao;
 
@@ -186,6 +197,11 @@ int main (){
 
             log_message("MAIN", "Thread " + std::to_string(i) + " finalizada");
         }
+
+        // Finalizar MQTT Manager
+        log_message("MAIN", "Finalizando MQTT Manager...");
+        mqtt_manager.shutdown();
+        log_message("MAIN", "MQTT Manager finalizado");
         
         std::cout << "Buffer navegação: ";
 
