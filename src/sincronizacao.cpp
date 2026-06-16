@@ -57,19 +57,6 @@ void reagendar_tarefa(boost::asio::steady_timer* t, int periodo_us, const std::s
     // if (atraso > LIMITE_ATRASO_US) {
     //     log_message(nome_tarefa, "ALERTA: Deadline violado! Atraso de " + std::to_string(atraso) + " us");
     // }
-void comando_navegacao(MemoriaCompartilhada* shm){
-
-    shm->j_sp_velocidade = 50; // teste de escrita na memória compartilhada
-    shm->c_automatico = true;
-    shm->c_man = false;
-    shm->e_automatico = true;
-
-    log_message(
-        "COMANDO",
-        std::string("Comando de navegação escreveu na memória compartilhada: ") +
-        "c_automatico = " + std::to_string(shm->c_automatico) +
-        " | j_sp_velocidade = " + std::to_string(shm->j_sp_velocidade)
-    );
 
     auto proximo_ciclo = t->expiry() + boost::asio::chrono::microseconds(periodo_us);
     

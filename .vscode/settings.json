@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/**",
         "/opt/homebrew/include",
@@ -11,15 +10,3 @@
     "C_Cpp.errorSquiggles": "disabled",
     "editor.inlineSuggest.enabled": false
 }
-=======
-  "C_Cpp.default.includePath": [
-    "${workspaceFolder}",
-    "${workspaceFolder}/include",
-    "${workspaceFolder}/src",
-    "/opt/homebrew/opt/boost/include"
-  ],
-  "C_Cpp.default.compilerPath": "/usr/bin/clang++",
-  "C_Cpp.default.cppStandard": "c++17",
-  "C_Cpp.default.intelliSenseMode": "macos-clang-arm64"
-}
->>>>>>> interface
