@@ -42,6 +42,9 @@ typedef boost::asio::chrono::microseconds microssegundos;
 void log_message (const std::string& thread, const std::string& mensagem);
 float numero_aleatorio_debugg();
 
+void handler_signal (const boost::system::error_code& error, int signal_number, boost::asio::steady_timer* t,
+                    boost::asio::io_context::strand* strand_camera, std::mutex& mtx, MemoriaCompartilhada* shm);
+
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade
  *  e liga/desliga para o controle de navegação. O comando de navegação que deve implementar a lógica de manual/ 

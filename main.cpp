@@ -39,7 +39,7 @@ int main() {
     // 2. CRIAÇÃO DE PROCESSOS (FORK)
     // =========================================================================
     
-    /*
+    
     // --- PROCESSO 1: INTERFACE PYGAME ---
     pid_t pid_interface = fork();
     if (pid_interface == 0) {
@@ -51,7 +51,7 @@ int main() {
         perror("Erro ao criar processo da interface");
         exit(1);
     }
-    */
+    
 
  // --- PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI) ---
 pid_t pid_controle = fork();
@@ -109,6 +109,10 @@ else {
     tempo_tarefa t4_rec(io_pai, microssegundos(PERIODO_RECONSTRUCAO));
     tempo_tarefa t5_con(io_pai, microssegundos(PERIODO_CONTROLE));
 
+    // --- CRIAÇÃO DE SIGNAL ---
+    boost::asio::signal_set sinais (io_pai);
+    sinais.add(SIGUSR1);
+
     // --- AGENDAMENTO DAS TAREFAS (ASYNC_WAIT) ---
     log_message("MAIN", "Agendando tarefas assíncronas...");
 
@@ -127,8 +131,12 @@ else {
         std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_processamento, shm, std::ref(sinc))));
 
     // Associando à Strand da Câmera (Isolada)
-    t2_cam.async_wait(boost::asio::bind_executor(strand_camera, 
+    /*t2_cam.async_wait(boost::asio::bind_executor(strand_camera, 
         std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_camera, std::ref(sinc.mutex_camera), shm)));
+    */
+    sinais.async_wait(
+        std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, &t2_cam, &strand_camera,
+            std::ref(sinc.mutex_camera), shm));
 
     // --- EXECUÇÃO (THREAD POOL) ---
     // 5. Reativar o Pool de Threads. Com 4 threads, as nossas 3 Strands podem rodar 
