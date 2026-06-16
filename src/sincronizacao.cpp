@@ -80,6 +80,24 @@ void comando_navegacao(MemoriaCompartilhada* shm){
     t->expires_at(proximo_ciclo);
 }
 
+void handler_signal (const boost::system::error_code& error, int signal_number, boost::asio::steady_timer* t,
+                    boost::asio::io_context::strand* strand_camera, std::mutex& mtx, MemoriaCompartilhada* shm){
+
+        if(!error){
+
+            if (signal_number == SIGUSR1){
+            shm->o_liga_camera = true; // Ligar a câmera
+            shm->o_aceleracao = 0.5; // Desaceleração
+
+            // -- Comando navegação ja acontece normalmente
+
+            // Acionar câmera
+            
+            boost::asio::post(*strand_camera, std::bind(inspecao_camera, 
+            boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        }
+        }
+}
+
 // =========================================================================
 // TAREFAS ASSÍNCRONAS DO SISTEMA
 // =========================================================================
@@ -194,16 +212,21 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
         std::lock_guard<std::mutex> lock_nivel(sinc.mtx_nivel);
         
         for (float dado_lido : dados_para_processar) {
-            // --- LÓGICA DE OVERSAMPLING PARA O NÍVEL ---
-            // Se o Coletor ficou para trás, joga fora o dado de nível mais antigo
+                
             if (sinc.disp_nivel >= ELEMENTOS_BUFFERS) {
                 sinc.LER_IDX_NIVEL = (sinc.LER_IDX_NIVEL + 1) % ELEMENTOS_BUFFERS;
                 sinc.disp_nivel--;
             }
 
-            sinc.BUFFER_NIVEL[sinc.ESC_IDX_NIVEL] = dado_lido; // Lógica de LIDAR aqui
+            sinc.BUFFER_NIVEL[sinc.ESC_IDX_NIVEL] = dado_lido;
             sinc.ESC_IDX_NIVEL = (sinc.ESC_IDX_NIVEL + 1) % ELEMENTOS_BUFFERS;
             sinc.disp_nivel++;
+
+            float erro = 0.0;
+            if (erro > 0.5){
+                std::raise(SIGUSR1);
+                break;
+            }
         }
         
         executado[2]++;
