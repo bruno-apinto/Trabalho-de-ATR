@@ -70,6 +70,8 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
                     boost::asio::steady_timer* t, boost::asio::io_context::strand* strand_camera, 
                     std::mutex& mtx, MemoriaCompartilhada* shm, boost::asio::signal_set* sinais) {
     
+    if(error) return;
+    
     if (signal_number == SIGUSR1) {
         shm->o_liga_camera = true;
         shm->o_aceleracao = -5;
@@ -216,7 +218,8 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
             if (numero_aleatorio_debugg() > 80.0){
                 //std::cout << "Entrou\n";
                 shm->e_inspecao = true;
-                kill(getpid(), SIGUSR1); // Envia o sinal para o processo inteiro, o Asio vai capturar!                break;
+                kill(getpid(), SIGUSR1);
+                break;
             }
         }
         
