@@ -6,7 +6,6 @@
 std::condition_variable camera;
 
 //teste para finalizar a camera
-int eventos_camera = 0;
 bool finalizar_camera = false;
 
 //Variaveis de condição buffers
