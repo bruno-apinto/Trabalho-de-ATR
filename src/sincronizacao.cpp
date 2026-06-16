@@ -23,7 +23,6 @@ int dados_nivel = 0;
 
 //Funções auxiliares de debbug
 std::mutex mutex_log;
-int eventos_camera = 0;
 int miss[4] = {0, 0, 0, 0};
 int executado[4] = {0, 0, 0, 0};
 

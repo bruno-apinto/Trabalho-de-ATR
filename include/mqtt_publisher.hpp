@@ -9,6 +9,8 @@
 #include <memory>
 #include <mutex>
 
+struct MemoriaCompartilhada;
+
 /**
  * @class MQTTPublisher
  * @brief Gerencia a publicação de dados do robô via MQTT

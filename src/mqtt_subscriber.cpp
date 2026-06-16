@@ -108,6 +108,8 @@ void MQTTSubscriber::subscriber_loop() {
 }
 
 void MQTTSubscriber::on_navigation_command(const std::string& topic, const std::string& payload) {
+    (void)topic;
+
     std::cout << "[Subscriber] Comando de navegação: " << payload << std::endl;
     
     // Proteger acesso à memória compartilhada com mutex
@@ -124,6 +126,8 @@ void MQTTSubscriber::on_navigation_command(const std::string& topic, const std::
 }
 
 void MQTTSubscriber::on_mode_command(const std::string& topic, const std::string& payload) {
+    (void)topic;
+
     std::cout << "[Subscriber] Comando de modo: " << payload << std::endl;
     
     // Proteger acesso à memória compartilhada com mutex
@@ -142,6 +146,8 @@ void MQTTSubscriber::on_mode_command(const std::string& topic, const std::string
 }
 
 void MQTTSubscriber::on_velocity_command(const std::string& topic, const std::string& payload) {
+    (void)topic;
+
     std::cout << "[Subscriber] Comando de velocidade: " << payload << std::endl;
     
     try {
@@ -162,6 +168,8 @@ void MQTTSubscriber::on_velocity_command(const std::string& topic, const std::st
 }
 
 void MQTTSubscriber::on_camera_command(const std::string& topic, const std::string& payload) {
+    (void)topic;
+
     std::cout << "[Subscriber] Comando de câmera: " << payload << std::endl;
     
     // Proteger acesso à memória compartilhada com mutex
