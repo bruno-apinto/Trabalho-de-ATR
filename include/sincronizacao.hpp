@@ -24,7 +24,7 @@ void comando_navegacao(MemoriaCompartilhada* shm);
  * @param mtx mutex utilizado
  * @param BUFFER historico de posições
  */
-void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER);
+void controle_navegacao(std::mutex &mtx, std::vector <float> &BUFFER, MemoriaCompartilhada* shm);
 
 /**
  * @brief Registra a distância percorrida fornecida pelo encoder. Possui a função de ESCRITOR sobre o BUFFER_NAVEGACAO.
