@@ -234,10 +234,42 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
 void coletor_dados(const boost::system::error_code& e, boost::asio::steady_timer* t, 
                    boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm, VarCondSinc &sinc) 
 {
+    static FILE* arquivo_coletor = nullptr; // arquivo para armazenamento de logs
+    static bool arquivo_aberto = false; // flag para controle de abertura do arquivo
+    static std::size_t contador_coletor = 0; // contador para controle de escrita no arquivo do coletor de dados
+    static const auto inicio_coletor = std::chrono::steady_clock::now(); // marca o início da coleta de dados
+    
     if (e) return;
     if (shm->c_encerrar) return;
+    if (e || shm->c_encerrar) {
+        if (arquivo_aberto) {
+            std::fflush(arquivo_coletor);
+            std::fclose(arquivo_coletor);
+            arquivo_aberto = false;
+            arquivo_coletor = nullptr;
+            log_message("COLETOR", "Arquivo de coleta fechado.");
+        }
+        return;
+    }
 
     bool processou_algo = false;
+
+    if(!arquivo_aberto) {
+        arquivo_coletor = std::fopen("dados_coletados.csv", "a+");
+        arquivo_aberto = true;
+        if (arquivo_coletor == nullptr) {
+             log_message("COLETOR", "Erro ao abrir arquivo de coleta!"); 
+        } else {
+            log_message("COLETOR", "Arquivo de coleta aberto para escrita.");
+            std::fseek(arquivo_coletor, 0, SEEK_END); // verifica se o arquivo já tem conteúdo
+            const long file_size = std::ftell(arquivo_coletor);
+            if (file_size == 0) {
+                std::fprintf(arquivo_coletor, "timestamp_ms;""tempo_execucao_ms;""valor_buffer;""lidar;""encoder;""aceleracao;""velocidade;""e_automatico;""e_inspecao\n");
+                std::fflush(arquivo_coletor);
+        }
+    }
+
+    std::vector<float> dados_coletados;
 
     {
         std::lock_guard<std::mutex> lock(sinc.mtx_nivel);
@@ -248,13 +280,28 @@ void coletor_dados(const boost::system::error_code& e, boost::asio::steady_timer
             sinc.disp_nivel--;
             
             // Lógica: Salva 'leitura' no Banco de Dados
-            
+            dados_coletados.push_back(leitura);
             processou_algo = true;
         }
     }
 
     if (processou_algo) {
         executado[3]++;
+        for (const float dado : dados_coletados) {
+            const auto momento_sistema = std::chrono::steady_clock::now();
+            const long long timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(momento_sistema - inicio_coletor).count();
+            const long long tempo_execucao_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - inicio_coletor).count();
+            if (arquivo_coletor) {
+                std::fprintf(arquivo_coletor, "%lld;%lld;%.2f;%d;%d;%d;%d;%d;%d\n", 
+                    timestamp_ms, tempo_execucao_ms, dado, static_cast<int>(shm->e_automatico), static_cast<int>(shm->e_inspecao), static_cast<int>(shm->o_aceleracao), static_cast<int>(shm->j_sp_velocidade), static_cast<int>(shm->i_lidar), static_cast<int>(shm->i_encoder));
+                    contador_coletor++;
+                    if (contador_coletor > 10) { // A cada 10 registros, força a escrita no arquivo para evitar perda de dados
+                        contador_coletor = 0;
+                        std::fflush(arquivo_coletor);
+                    }
+                    log_message("COLETOR", "Dados coletados e registrados: " + std::to_string(dado));
+            }
+        }
     } else {
         miss[3]++;
     }
@@ -271,16 +318,15 @@ void coletor_dados(const boost::system::error_code& e, boost::asio::steady_timer
     reagendar_tarefa(t, PERIODO_COLETOR, "COLETOR");
     t->async_wait(boost::asio::bind_executor(*strand, 
         std::bind(coletor_dados, std::placeholders::_1, t, strand, shm, std::ref(sinc))));
+    }
 }
 
 
 void inspecao_camera(const boost::system::error_code& e, boost::asio::steady_timer* t, 
-                     boost::asio::io_context::strand* strand, std::mutex& mtx, MemoriaCompartilhada* shm) 
-{
+                     boost::asio::io_context::strand* strand, std::mutex& mtx, MemoriaCompartilhada* shm) {
     if (e) return;
     if (shm->c_encerrar) return;
 
-    {
         std::lock_guard<std::mutex> lock(mtx);
         if (eventos_camera > 0) {
             eventos_camera--;
@@ -290,7 +336,6 @@ void inspecao_camera(const boost::system::error_code& e, boost::asio::steady_tim
             shm->e_inspecao = false;
             log_message("CAMERA", "Inspeção finalizada");
         }
-    }
 
     reagendar_tarefa(t, PERIODO_CAMERA, "CAMERA");
     t->async_wait(boost::asio::bind_executor(*strand, 
