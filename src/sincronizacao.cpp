@@ -73,7 +73,7 @@ void handler_signal (const boost::system::error_code& error, int signal_number, 
 
             if (signal_number == SIGUSR1){
             shm->o_liga_camera = true; // Ligar a câmera
-            shm->o_aceleracao = 0.5; // Desaceleração
+            shm->o_aceleracao = -5; // Desaceleração
 
             // -- Comando navegação ja acontece normalmente
 

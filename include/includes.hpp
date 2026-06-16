@@ -29,6 +29,8 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <fstream>
 #include <cstdio>
+#include <algorithm>
+#include <cmath>
 
 // MQTT
 #include "mqtt_client.hpp"
