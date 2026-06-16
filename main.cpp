@@ -49,8 +49,6 @@ int main (){
 
     shm->c_encerrar = false;
 
-    shm->c_encerrar = false;
-
     // =========================================================================
     // 2. CRIAÇÃO DE PROCESSOS (FORK)
     // =========================================================================
@@ -82,8 +80,6 @@ if (pid_controle == 0) {
 
     mapped_region region_child(shm_child, read_write);
     MemoriaCompartilhada* shm_filho = static_cast<MemoriaCompartilhada*>(region_child.get_address());
-
-    comando_navegacao (shm_filho);
 
     // 1. Instanciar o Asio APENAS para o filho
     boost::asio::io_context io_filho;

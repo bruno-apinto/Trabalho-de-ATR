@@ -7,6 +7,9 @@
 #include <memory>
 #include <mutex>
 
+struct MemoriaCompartilhada;
+class MQTTPublisher;
+class MQTTSubscriber;
 /**
  * @class MQTTManager
  * @brief Gerenciador centralizado de comunicação MQTT

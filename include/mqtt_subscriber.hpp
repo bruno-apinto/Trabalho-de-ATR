@@ -9,6 +9,8 @@
 #include <memory>
 #include <mutex>
 
+struct MemoriaCompartilhada;
+
 /**
  * @class MQTTSubscriber
  * @brief Gerencia a subscrição de comandos para o robô via MQTT
