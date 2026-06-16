@@ -23,3 +23,16 @@
 
 #include <functional>
 #include <boost/asio.hpp>
+#include <sys/wait.h>
+
+#include <boost/interprocess/file_mapping.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <fstream>
+#include <cstdio>
+
+// MQTT
+#include "mqtt_client.hpp"
+#include "mqtt_publisher.hpp"
+#include "mqtt_subscriber.hpp"
+#include "mqtt_manager.hpp"
+#include "mqtt_config.hpp"

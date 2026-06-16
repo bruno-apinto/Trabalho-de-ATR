@@ -3,37 +3,53 @@
 #include "include/sincronizacao.hpp"
 #include "include/simulacao.hpp"
 
-int main() {
-    
+int main (){
+
+    using namespace boost::interprocess;
+
     simulacao();
 
-    // =========================================================================
-    // 1. DIRETIVAS DE COMUNICAÇÃO (MEMÓRIA COMPARTILHADA / IPC)
-    // =========================================================================
-    key_t key = IPC_PRIVATE; 
-    int shmid = shmget(key, sizeof(MemoriaCompartilhada), 0666 | IPC_CREAT);
-    
-    if (shmid < 0) {
-        perror("Erro ao criar memória compartilhada");
+    std::remove(SHM_FILE); // remove a memória compartilhada caso ela já exista
+
+    {
+    std::filebuf fbuf;
+    fbuf.open(SHM_FILE, std::ios_base::in | std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+
+    if(!fbuf.is_open()){
+        std::cerr << "Erro ao criar arquivo de memória compartilhada" << std::endl;
         return 1;
     }
 
-    MemoriaCompartilhada* shm = (MemoriaCompartilhada*) shmat(shmid, nullptr, 0);
-    if (shm == (void*) -1) {
-        perror("Erro ao anexar memória compartilhada");
-        return 1;
-    }
+    fbuf.pubseekoff(sizeof(MemoriaCompartilhada)-1, std::ios_base::beg);
+    fbuf.sputc(0);
+    fbuf.close();
+    } // cria arquivo que será mapeado na memória
 
-    // Inicialização da Estrutura de Dados
-    shm->i_encoder      = false;
-    shm->i_lidar        = 0;
-    shm->o_liga_camera  = false;
-    shm->o_aceleracao   = 0;
-    shm->e_inspecao     = false;
-    shm->e_automatico   = false;
-    shm->c_automatico   = false;
-    shm->c_man          = false;
-    shm->j_sp_velocidade= 0;
+    std::cout << "Arquivo de memória criado em: " << SHM_FILE << std::endl;
+    std::cout << "Tamanho da struct C++: " << sizeof(MemoriaCompartilhada) << " bytes" << std::endl;
+
+    file_mapping shm_file(SHM_FILE, read_write);
+    mapped_region region(shm_file, read_write); // mapeia o arquivo no espaço de memória
+
+    MemoriaCompartilhada* shm = static_cast<MemoriaCompartilhada*>(region.get_address());
+
+    // Inicializa os valores da memória compartilhada
+    shm->i_encoder = false;
+    shm->i_lidar = 0;
+
+    shm->o_liga_camera = false;
+    shm->o_aceleracao = 0;
+
+    shm->e_inspecao = false;
+    shm->e_automatico = false;
+
+    shm->c_automatico = false;
+    shm->c_man = false;
+    shm->j_sp_velocidade = 0;
+
+    shm->c_encerrar = false;
+
+    shm->c_encerrar = false;
 
     // =========================================================================
     // 2. CRIAÇÃO DE PROCESSOS (FORK)
@@ -62,6 +78,13 @@ if (pid_controle == 0) {
     // ---------------------------------------------------------------------
     log_message("PROCESSO", "Processo comando_navegacao criado");
 
+    file_mapping shm_child(SHM_FILE, read_write); // abre a memória compartilhada criada
+
+    mapped_region region_child(shm_child, read_write);
+    MemoriaCompartilhada* shm_filho = static_cast<MemoriaCompartilhada*>(region_child.get_address());
+
+    comando_navegacao (shm_filho);
+
     // 1. Instanciar o Asio APENAS para o filho
     boost::asio::io_context io_filho;
     boost::asio::io_context::strand strand_filho(io_filho);
@@ -72,6 +95,10 @@ if (pid_controle == 0) {
 
     shm->c_automatico = true;
     shm->j_sp_velocidade = 50;
+
+    std::cout << "Comando de navegação escreveu na memória compartilhada:" << std::endl;
+            std::cout << "c_automatico = " << shm_filho->c_automatico << std::endl;
+            std::cout << "j_sp_velocidade = " << shm_filho->j_sp_velocidade << std::endl;
 
     // 2. Iniciar o laço de eventos do filho (Descomentado)
     // Se não chamar run(), as tarefas do filho nunca vão executar!
@@ -89,7 +116,20 @@ else {
     // ---------------------------------------------------------------------
     // BLOCO DO PAI: CONTROLE DE NAVEGAÇÃO E SENSORIAMENTO
     // ---------------------------------------------------------------------
+
     log_message("PROCESSO", "Processo de controle de navegação iniciado");
+
+    std::mutex shm_mutex;
+
+    // Inicializar MQTT Manager para comunicação com operação remota
+    MQTTManager mqtt_manager(shm, shm_mutex);
+        
+    log_message("MAIN", "Inicializando MQTT Manager...");
+    if (mqtt_manager.initialize()) {
+        log_message("MAIN", "MQTT Manager inicializado com sucesso");
+    } else {
+        log_message("MAIN", "Falha ao inicializar MQTT Manager - continuando sem MQTT");
+    }
 
     // 3. Instanciar o Asio isolado para o Pai
     boost::asio::io_context io_pai;
@@ -170,10 +210,14 @@ else {
     // Espera o processo filho acabar
     waitpid(pid_controle, nullptr, 0);
 
+    // Finalizar MQTT Manager
+    log_message("MAIN", "Finalizando MQTT Manager...");
+    mqtt_manager.shutdown();
+    log_message("MAIN", "MQTT Manager finalizado");
+
     log_message("MAIN", "Execução finalizada. Limpando memória.");
 
-    // Desanexa e remove segmento de memória compartilhada
-    shmdt(shm);
-    shmctl(shmid, IPC_RMID, nullptr);
+    // Desanexa memória no pai
+    //std::remove(SHM_FILE); 
 }
 }   

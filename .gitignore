@@ -1,0 +1,67 @@
+# =========================
+# C++ / Compilação
+# =========================
+
+*.o
+*.obj
+*.out
+*.exe
+*.a
+*.so
+*.dylib
+*.dll
+
+# Executável gerado pelo projeto
+programa
+
+
+# =========================
+# LaTeX
+# =========================
+
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+
+# Arquivos gerados pelo minted
+_minted*
+*.pyg
+
+
+# =========================
+# macOS
+# =========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+
+# =========================
+# VS Code
+# =========================
+# Configurações locais do editor
+.vscode/
+
+# Se quiser versionar configs específicas do projeto,
+# comente a linha acima e controle manualmente os arquivos da pasta .vscode
+
+
+# =========================
+# Temporários
+# =========================
+
+*.tmp
+*.bak
+*.swp
+*~
