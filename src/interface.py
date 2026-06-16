@@ -199,8 +199,7 @@ def alertas():
 def movimenta_carrinho(delta_tempo):
     global posicao, velocidade
 
-    aceleracao = max(int(memoria.o_aceleracao), 0.5)
-    velocidade += 50 * aceleracao * delta_tempo
+    velocidade += (memoria.j_sp_velocidade + memoria.o_aceleracao) * delta_tempo
     posicao += velocidade * delta_tempo
 
     posicao += velocidade * delta_tempo
@@ -261,6 +260,7 @@ while True: # ciclo principal
                 memoria.j_sp_velocidade = max(0, memoria.j_sp_velocidade - 10)
 
     movimenta_carrinho(delta_tempo)
+    anomalias_automaticas()
     atualiza_sensores()
 
     tunel_x = -int(posicao % largura_tela)
