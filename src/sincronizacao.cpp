@@ -72,14 +72,16 @@ void handler_signal (const boost::system::error_code& error, int signal_number, 
 
             if (signal_number == SIGUSR1){
             shm->o_liga_camera = true; // Ligar a câmera
-            shm->o_aceleracao = 0.5; // Desaceleração
+            shm->o_aceleracao = -0.5; // Desaceleração
 
             // -- Comando navegação ja acontece normalmente
 
             // Acionar câmera
             
             boost::asio::post(*strand_camera, std::bind(inspecao_camera, 
-            boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        }
+            boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        
+            
+            }
         }
 }
 
@@ -91,7 +93,7 @@ void comando_navegacao(const boost::system::error_code& e, boost::asio::steady_t
                        boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm) 
 {
     if (e) return;
-    if (!shm->c_automatico) {
+    if (shm->c_encerrar) {
         log_message("COMANDO", "Modo automático desativado. Encerrando.");
         return;
     }
@@ -108,7 +110,7 @@ void controle_navegacao(const boost::system::error_code& e, boost::asio::steady_
                         boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm, VarCondSinc &sinc) 
 {
     if (e) return;
-    if (!shm->c_automatico) return;
+    if (shm->c_encerrar) return;
 
     bool processou_algo = false;
 
@@ -122,6 +124,8 @@ void controle_navegacao(const boost::system::error_code& e, boost::asio::steady_
             
             processou_algo = true;
         }
+
+        unlock(lock);
     }
 
     if (processou_algo) {
@@ -140,7 +144,7 @@ void distancia_percorrida(const boost::system::error_code& e, boost::asio::stead
                           boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm, VarCondSinc &sinc) 
 {
     if (e) return;
-    if (!shm->c_automatico) return;
+    if (shm->c_encerrar) return;
 
     {
         std::lock_guard<std::mutex> lock(sinc.mtx_navegacao);
@@ -178,7 +182,7 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
                        boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm, VarCondSinc &sinc) 
 {
     if (e) return;
-    if (!shm->c_automatico) return;
+    if (shm->c_encerrar) return;
 
     std::vector<float> dados_para_processar;
 
@@ -207,8 +211,9 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
             sinc.ESC_IDX_NIVEL = (sinc.ESC_IDX_NIVEL + 1) % ELEMENTOS_BUFFERS;
             sinc.disp_nivel++;
 
-            float erro = 0.0;
-            if (erro > 0.5){
+            float erro = sinc.BUFFER_NIVEL[(sinc.ESC_IDX_NIVEL-1)%ELEMENTOS_BUFFERS] - sinc.BUFFER_NIVEL[sinc.ESC_IDX_NIVEL];
+            if (abs(erro) > 0.5){
+                shm->e_inspecao = true;
                 std::raise(SIGUSR1);
                 break;
             }
@@ -229,7 +234,7 @@ void coletor_dados(const boost::system::error_code& e, boost::asio::steady_timer
                    boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm, VarCondSinc &sinc) 
 {
     if (e) return;
-    if (!shm->c_automatico) return;
+    if (shm->c_encerrar) return;
 
     bool processou_algo = false;
 
@@ -272,7 +277,7 @@ void inspecao_camera(const boost::system::error_code& e, boost::asio::steady_tim
                      boost::asio::io_context::strand* strand, std::mutex& mtx, MemoriaCompartilhada* shm) 
 {
     if (e) return;
-    if (!shm->c_automatico) return;
+    if (shm->c_encerrar) return;
 
     {
         std::lock_guard<std::mutex> lock(mtx);

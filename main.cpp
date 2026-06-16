@@ -199,7 +199,7 @@ else {
 
     // Modificar a flag faz com que os handlers das tarefas não agendem novas chamadas.
     // Assim, a fila de tarefas do io_context esvazia naturalmente e o run() encerra.
-    shm->c_automatico = false;
+    shm->c_encerrar = true;
 
     // --- SINCRONIZAÇÃO FINAL ---
     for (auto& t : thread_pool) {
