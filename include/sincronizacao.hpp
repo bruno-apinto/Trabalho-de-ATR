@@ -10,7 +10,7 @@
 #define PERIODO_CONTROLE 80
 #define PERIODO_DISTANCIA 20
 #define PERIODO_CAMERA 80
-#define PERIODO_COLETOR 500
+#define PERIODO_COLETOR 100
 #define PERIODO_RECONSTRUCAO 80
 
 struct VarCondSinc {
@@ -37,13 +37,14 @@ struct VarCondSinc {
 };
 
 typedef boost::asio::steady_timer tempo_tarefa;
-typedef boost::asio::chrono::microseconds microssegundos;
+typedef boost::asio::chrono::milliseconds milisegundos;
 
 void log_message (const std::string& thread, const std::string& mensagem);
 float numero_aleatorio_debugg();
 
-void handler_signal (const boost::system::error_code& error, int signal_number, boost::asio::steady_timer* t,
-                    boost::asio::io_context::strand* strand_camera, std::mutex& mtx, MemoriaCompartilhada* shm);
+void handler_signal (const boost::system::error_code& error, int signal_number, 
+                    boost::asio::steady_timer* t, boost::asio::io_context::strand* strand_camera, 
+                    std::mutex& mtx, MemoriaCompartilhada* shm, boost::asio::signal_set* sinais);
 
 /**
  * @brief Tarefa que recebe comandos do sistema de operação remoto e traduz os comandos em setpoint de velocidade

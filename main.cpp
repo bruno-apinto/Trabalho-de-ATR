@@ -85,7 +85,7 @@ if (pid_controle == 0) {
     boost::asio::io_context io_filho;
     boost::asio::io_context::strand strand_filho(io_filho);
 
-    tempo_tarefa t_comando(io_filho, microssegundos(500));
+    tempo_tarefa t_comando(io_filho, milisegundos(500));
     t_comando.async_wait(boost::asio::bind_executor(strand_filho, 
         std::bind(comando_navegacao, std::placeholders::_1, &t_comando, &strand_filho, shm)));
 
@@ -139,11 +139,11 @@ else {
     struct VarCondSinc sinc;
 
     // --- DEFINIÇÃO DOS TEMPORIZADORES (TIMERS) ---
-    tempo_tarefa t1_dist(io_pai, microssegundos(PERIODO_DISTANCIA));
-    tempo_tarefa t2_cam(io_pai, microssegundos(PERIODO_CAMERA));
-    tempo_tarefa t3_col(io_pai, microssegundos(PERIODO_COLETOR));
-    tempo_tarefa t4_rec(io_pai, microssegundos(PERIODO_RECONSTRUCAO));
-    tempo_tarefa t5_con(io_pai, microssegundos(PERIODO_CONTROLE));
+    tempo_tarefa t1_dist(io_pai, milisegundos(PERIODO_DISTANCIA));
+    tempo_tarefa t2_cam(io_pai, milisegundos(PERIODO_CAMERA));
+    tempo_tarefa t3_col(io_pai, milisegundos(PERIODO_COLETOR));
+    tempo_tarefa t4_rec(io_pai, milisegundos(PERIODO_RECONSTRUCAO));
+    tempo_tarefa t5_con(io_pai, milisegundos(PERIODO_CONTROLE));
 
     // --- CRIAÇÃO DE SIGNAL ---
     boost::asio::signal_set sinais (io_pai);
@@ -172,7 +172,7 @@ else {
     */
     sinais.async_wait(
         std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, &t2_cam, &strand_camera,
-            std::ref(sinc.mutex_camera), shm));
+            std::ref(sinc.mutex_camera), shm, &sinais));
 
     // --- EXECUÇÃO (THREAD POOL) ---
     // 5. Reativar o Pool de Threads. Com 4 threads, as nossas 3 Strands podem rodar 

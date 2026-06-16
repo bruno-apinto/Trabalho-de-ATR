@@ -7,6 +7,7 @@ std::condition_variable camera;
 
 //teste para finalizar a camera
 bool finalizar_camera = false;
+int eventos_camera = 0;
 
 //Variaveis de condição buffers
 std::condition_variable leitura_buffer_navegacao;
@@ -49,41 +50,41 @@ float numero_aleatorio_debugg() {
 // =========================================================================
 void reagendar_tarefa(boost::asio::steady_timer* t, int periodo_us, const std::string& nome_tarefa) {
     auto agora = std::chrono::steady_clock::now();
-    auto atraso = std::chrono::duration_cast<std::chrono::microseconds>(agora - t->expiry()).count();
+    auto atraso = std::chrono::duration_cast<std::chrono::milliseconds>(agora - t->expiry()).count();
 
     // Comentado para não poluir o log no modo Oversampling rápido
     // if (atraso > LIMITE_ATRASO_US) {
     //     log_message(nome_tarefa, "ALERTA: Deadline violado! Atraso de " + std::to_string(atraso) + " us");
     // }
 
-    auto proximo_ciclo = t->expiry() + boost::asio::chrono::microseconds(periodo_us);
+    auto proximo_ciclo = t->expiry() + boost::asio::chrono::milliseconds(periodo_us);
     
     if (proximo_ciclo < agora) {
-        proximo_ciclo = agora + boost::asio::chrono::microseconds(periodo_us);
+        proximo_ciclo = agora + boost::asio::chrono::milliseconds(periodo_us);
     }
     
     t->expires_at(proximo_ciclo);
 }
 
-void handler_signal (const boost::system::error_code& error, int signal_number, boost::asio::steady_timer* t,
-                    boost::asio::io_context::strand* strand_camera, std::mutex& mtx, MemoriaCompartilhada* shm){
+void handler_signal(const boost::system::error_code& error, int signal_number, 
+                    boost::asio::steady_timer* t, boost::asio::io_context::strand* strand_camera, 
+                    std::mutex& mtx, MemoriaCompartilhada* shm, boost::asio::signal_set* sinais) {
+    
+    if (signal_number == SIGUSR1) {
+        shm->o_liga_camera = true;
+        shm->o_aceleracao = -5;
+        eventos_camera++; 
 
-        if(!error){
+        boost::asio::post(*strand_camera, std::bind(inspecao_camera, 
+                        boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        
+    }
 
-            if (signal_number == SIGUSR1){
-            shm->o_liga_camera = true; // Ligar a câmera
-            shm->o_aceleracao = -0.5; // Desaceleração
+        // --- REAGENDAMENTO CRÍTICO ---
 
-            // -- Comando navegação ja acontece normalmente
-
-            // Acionar câmera
-            
-            boost::asio::post(*strand_camera, std::bind(inspecao_camera, 
-            boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        
-            
-            }
-        }
+        sinais->async_wait(std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, 
+                                     t, strand_camera, std::ref(mtx), shm, sinais));
 }
+
 
 // =========================================================================
 // TAREFAS ASSÍNCRONAS DO SISTEMA
@@ -124,8 +125,6 @@ void controle_navegacao(const boost::system::error_code& e, boost::asio::steady_
             
             processou_algo = true;
         }
-
-        unlock(lock);
     }
 
     if (processou_algo) {
@@ -212,10 +211,12 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
             sinc.disp_nivel++;
 
             float erro = sinc.BUFFER_NIVEL[(sinc.ESC_IDX_NIVEL-1)%ELEMENTOS_BUFFERS] - sinc.BUFFER_NIVEL[sinc.ESC_IDX_NIVEL];
-            if (abs(erro) > 0.5){
+            
+            //if ((abs(erro) > 0.5) || numero_aleatorio_debugg() > 80.0){
+            if (numero_aleatorio_debugg() > 80.0){
+                //std::cout << "Entrou\n";
                 shm->e_inspecao = true;
-                std::raise(SIGUSR1);
-                break;
+                kill(getpid(), SIGUSR1); // Envia o sinal para o processo inteiro, o Asio vai capturar!                break;
             }
         }
         
