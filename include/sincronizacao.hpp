@@ -109,5 +109,4 @@ void inspecao_camera(const boost::system::error_code& e,
 
 void operacao_remota(std::mutex &mtx, std::vector <float> &BUFFER);
 
-
 #endif
