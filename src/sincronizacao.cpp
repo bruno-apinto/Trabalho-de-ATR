@@ -71,7 +71,7 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
                     std::mutex& mtx, MemoriaCompartilhada* shm, boost::asio::signal_set* sinais) {
     
     if(error) return;
-    
+
     if (signal_number == SIGUSR1) {
         shm->o_liga_camera = true;
         shm->o_aceleracao = -5;
@@ -81,7 +81,7 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
                         boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        
     }
 
-        // --- REAGENDAMENTO CRÍTICO ---
+        //REAGENDAMENTO
 
         sinais->async_wait(std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, 
                                      t, strand_camera, std::ref(mtx), shm, sinais));

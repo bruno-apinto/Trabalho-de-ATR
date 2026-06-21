@@ -200,7 +200,7 @@ else {
 
     io_pai.stop();
 
-    // --- SINCRONIZAÇÃO FINAL ---
+    //SINCRONIZAÇÃO FINAL
     for (auto& t : thread_pool) {
         if (t.joinable()) {
             std::cout << "Esperando join da thread...\n";
