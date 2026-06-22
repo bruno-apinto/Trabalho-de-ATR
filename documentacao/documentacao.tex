@@ -79,34 +79,27 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 
 \section{Proposta de Arquitetura}
 
-    A arquitetura do trabalho foi realizada com o intuito de facilitar o máximo possível
-    a aplicação dos conceitos, por isso foi priorizada a utilização de threads à criação de processos. A partir dos requisitos mínimos, 2 processos foram criados. Além disso, aproveita-se das threads originárias dos próprios
-    processos para evitar a criação desnecessária de mais threads. A arquitetura pode ser conferida na figura \ref{fig:arquitetura}.
+A proposta de arquitetura apresentada na primeira etapa do trabalho foi totalmente remodelada, pois não se adequava aos requisitos de utilização da biblioteca Boost. Além disso, identificou-se o acúmulo de tarefas na fila entre as \textit{threads}. Na abordagem inicial, o travamento das tarefas era frequente, dado que o período da tarefa \textit{distancia\_percorrida()} é de $20$ ms, enquanto o da tarefa \textit{reconstrucao\_teto()} é de $100$ ms. Consequentemente, a taxa de escrita no \texttt{BUFFER\_NAVEGACAO} é significativamente superior à sua taxa de leitura. Assim, ao utilizar a instrução \textit{wait()} em \textit{distancia\_percorrida()}, o sistema entrava em um \textit{deadlock}. Para evitar esse cenário, quando uma tarefa agendada não está apta para execução, ela é finalizada forçadamente, sendo contabilizada como uma perda de prazo (\textit{miss}).
+
+Ademais, implementou-se o uso de \textit{strands} para otimizar o aproveitamento da biblioteca Boost e evitar condições de corrida no acesso aos \textit{buffers}. A classe \texttt{io\_service::strand} atua como um serializador de contexto de I/O, gerindo o agendamento de execuções. Por meio da função \texttt{boost::post}, é possível enfileirar novas tarefas de forma segura. Isso garante que as tarefas sejam executadas sequencialmente na \textit{strand}, eliminando a preempção concorrente e as condições de corrida sem a necessidade de bloqueios explícitos.
+   
 \begin{figure}[ht]
-  \includegraphics[ width= \linewidth]{imagens/arquitetura_threades_processos.png}
-  \caption{Proposta de arquitetura para o trabalho prático. Losangos representam processos e círculos representam threads.}\label{fig:arquitetura}
+  \includegraphics[width=1\linewidth]{imagens/arq_fila.png}
+  \caption{Proposta de arquitetura para o trabalho prático. É possível identificar a relação dos bufferes com as funções.}\label{fig:arq_fila}
 \end{figure}
 
-Ademais, para a comunicação e para os recursos compartilhados, foi utilizada uma diretiva diferente de sincronização. No caso do buffer\_navegacao,
- foi utilizado o método do META-LOCKING. Para o buffer\_nivel, foram utilizadas variáveis de condição, de forma mais simples, usando wait e signal diretamente, visando simplificar a implementação do meta-locking, com condições complexas de acesso ao recurso compartilhado. %chktex 18
-  E por fim, a comunicação entre os processos foi feita por meio da memória compartilhada.
-
-A implementação dos buffers compartilhados foi realizada por meio de \texttt{std::vector<float>} e operações módulo (\texttt{idx \% ELEMENTOS\_BUFFER}). 
-Dessa forma, garante-se a condição circular por meio do próprio tratamento da biblioteca \texttt{vector} e da aritmética simples. 
-Foi escolhido o tipo \texttt{float}, pois trata-se de fenômenos físicos como velocidade e posição. Por fim, 
-os buffers possuem tamanho inicial de 10 elementos (\texttt{ELEMENTOS\_BUFFER}), o que se mostra um valor razoável para ações em tempo real.
 
 \subsection{Escolha da sincronização}
 
-A lógica de sincronização foi implementada de forma diferente para cada buffer devido à natureza dos acessos realizados sobre cada recurso compartilhado. No caso do \texttt{BUFFER\_NAVEGACAO}, existe uma tarefa escritora, associada ao cálculo da distância percorrida, e mais de uma tarefa leitora, associada ao controle de navegação e à reconstrução do teto. Por esse motivo, foi adotada uma lógica de leitores e escritores baseada em meta-locking, utilizando contadores auxiliares para indicar leitores ativos, leitores aguardando, escritores ativos e escritores aguardando. Antes de acessar o buffer, cada tarefa verifica o estado desses contadores dentro de uma região protegida por \texttt{mutex}. Caso o recurso não esteja disponível, a tarefa é bloqueada por meio de uma \texttt{condition\_variable}, permanecendo em espera até que outra tarefa libere o acesso e envie uma notificação.
+A sincronização das tarefas como introduzido anteriormente foi totalemnte readequado para a biblioteca Boost. Foram criadas três strands: \textit{strand\_navegacao}, \textit{strand\_processamento} e \textit{strand\_camera}. As duas primeiras gerenciam as tarefas como ilustrado na figura \ref{fig:arq_sinc}. Já a terceira gerencia apenas a utilização da câmera que não interage diretamente com as outras tarefas.
 
-Essa estratégia evita situações de \textit{race condition}, nas quais duas ou mais threads acessariam simultaneamente o mesmo recurso compartilhado de forma inconsistente, além de dar prioridade aos escritores (como pode ser visto nas condições do meta-locking), evitando inanição. No caso do \texttt{BUFFER\_NAVEGACAO}, a sincronização foi feita com variáveis de condição, que impedem que uma escrita ocorra enquanto há leitores ativos e também impede que outros leitores ou escritores acessem durante uma escrita ativa. Dessa forma, evita-se que uma thread leia um valor parcialmente atualizado ou que uma escrita sobrescreva dados enquanto outra tarefa ainda está utilizando o buffer.
+Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrida} = 20 ms$ e $T_{reconstrucao\_teto} = 100 ms$), a tarefa \textit{distancia\_percorrida} acontece em único ciclo, enquanto a tarefa \textit{reconstrucao\_teto} executa em "lotes", até que se encontre uma falha. Dessa forma, é possível facilitar a sincornização e a frequência de ambas filas.
 
-Já o \texttt{BUFFER\_NIVEL} foi implementado com uma lógica produtor-consumidor, pois possui uma relação mais direta entre as tarefas: a reconstrução do teto atua como produtora das amostras de nível, enquanto o coletor de dados atua como consumidor. Quando o \texttt{BUFFER\_NIVEL} está vazio, ou seja, quando \texttt{dados\_nivel == 0}, a tarefa consumidora é bloqueada por uma variável de condição até que a tarefa produtora escreva um novo dado e envie uma notificação. Isso evita leitura inválida de posições sem dados disponíveis. De forma análoga, quando o buffer atinge sua capacidade máxima, a tarefa produtora é bloqueada até que o consumidor leia uma amostra e libere espaço. Esse mecanismo evita sobrescrita de dados ainda não consumidos.
-
-O uso de \texttt{condition\_variable} também evita espera ativa, pois as threads bloqueadas não ficam executando continuamente testes em laços de repetição enquanto aguardam o recurso. Em vez disso, elas são suspensas pelo sistema operacional e retomadas apenas quando uma condição relevante é sinalizada. Isso reduz o uso desnecessário de CPU e torna a execução mais adequada para aplicações concorrentes e de tempo real.
-
-Por fim, a utilização de \texttt{mutexes}, variáveis de condição e contadores de controle contribui para evitar erros clássicos de programação concorrente, como \textit{race conditions}, leituras inconsistentes, sobrescrita de dados, perda de eventos, inanição e bloqueios permanentes. 
+\begin{figure}[ht]
+  \includegraphics[width=1\linewidth]{imagens/arq_sinc.png}
+  \caption{Divisão das strands.}\label
+  {fig:arq_sinc}
+\end{figure}
 
 \section{Resultados de Testes Preliminares Realizados}
 
@@ -118,7 +111,7 @@ Os resultados desses testes preliminares foram positivos, demonstrando que a imp
 
 \subsection{Compilação e Execução Inicial}
 
-Inicialmente, foi validado o processo de compilação do programa por meio do arquivo \textit{Makefile}, que foi comprovada pela utilização de logs que imprimem mensagens indicando tarefas que foram realizadas. Durante a execução inicial, verificou-se a criação do processo associado ao comando de navegação, a escrita de comandos em memória compartilhada e a leitura desses comandos pelo processo principal. Foram observados valores coerentes para o comando de operação automática e para o setpoint de velocidade, indicando que a estrutura inicial de compartilhamento de informações foi inicializada corretamente.
+Inicialmente, foi validado o processo de compilação do programa por meio do arquivo \texttt{Makefile}, que foi comprovada pela utilização de logs que imprimem mensagens indicando tarefas que foram realizadas. Durante a execução inicial, verificou-se a criação do processo associado ao comando de navegação, a escrita de comandos em memória compartilhada e a leitura desses comandos pelo processo principal. Foram observados valores coerentes para o comando de operação automática e para o setpoint de velocidade, indicando que a estrutura inicial de compartilhamento de informações foi inicializada corretamente.
 
 Em seguida, foram criadas as threads correspondentes às principais tarefas do sistema: cálculo de distância percorrida, inspeção por câmera, coletor de dados, reconstrução do teto e controle de navegação. A criação das threads foi acompanhada por mensagens de log, permitindo verificar a inicialização e execução das tarefas.
 

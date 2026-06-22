@@ -76,6 +76,8 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
                     boost::asio::steady_timer* t, boost::asio::io_context::strand* strand_camera, 
                     std::mutex& mtx, MemoriaCompartilhada* shm, boost::asio::signal_set* sinais) {
     
+    if(error) return;
+
     if (signal_number == SIGUSR1) {
         eventos_camera++;
 
@@ -83,7 +85,7 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
                         boost::system::error_code(), t, strand_camera, std::ref(mtx), shm));        
     }
 
-        // --- REAGENDAMENTO CRÍTICO ---
+        //REAGENDAMENTO
 
         sinais->async_wait(std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, 
                                      t, strand_camera, std::ref(mtx), shm, sinais));
@@ -317,12 +319,12 @@ void reconstrucao_teto(const boost::system::error_code& e, boost::asio::steady_t
             sinc.BUFFER_NIVEL[sinc.ESC_IDX_NIVEL] = media;
             sinc.ESC_IDX_NIVEL = (sinc.ESC_IDX_NIVEL + 1) % ELEMENTOS_BUFFERS;
             sinc.disp_nivel++;
+
+            // Sinaliza para o publisher MQTT que há novo ponto de perfil
+            shm->perfil_y = media;
+            shm->perfil_novo = true;
         }
-
-        // Sinaliza para o publisher MQTT que há novo ponto de perfil
-        shm->perfil_y = media;
-        shm->perfil_novo = true;
-
+        
         executado[2]++;
     } else {
         miss[2]++;

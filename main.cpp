@@ -133,7 +133,6 @@ else {
 
     std::mutex shm_mutex;
 
-    // Inicializar MQTT Manager para comunicação com operação remota
     MQTTManager mqtt_manager(shm, shm_mutex);
         
     log_message("MAIN", "Inicializando MQTT Manager...");
@@ -143,25 +142,22 @@ else {
         log_message("MAIN", "Falha ao inicializar MQTT Manager - continuando sem MQTT");
     }
 
-    // 3. Instanciar o Asio isolado para o Pai
     boost::asio::io_context io_pai;
 
-    // 4. CRIANDO MÚLTIPLAS STRANDS (Segregação de Lógica)
-    // Tarefas na mesma strand não concorrem. Strands diferentes rodam em paralelo.
     boost::asio::io_context::strand strand_navegacao(io_pai); // Para dist e controle
     boost::asio::io_context::strand strand_processamento(io_pai); // Para reconstrução e dados
     boost::asio::io_context::strand strand_camera(io_pai); // Para câmera isolada
 
     struct VarCondSinc sinc;
 
-    // --- DEFINIÇÃO DOS TEMPORIZADORES (TIMERS) ---
+    // DEFINIÇÃO DOS TEMPORIZADORES
     tempo_tarefa t1_dist(io_pai, milisegundos(PERIODO_DISTANCIA));
     tempo_tarefa t2_cam(io_pai, milisegundos(PERIODO_CAMERA));
     tempo_tarefa t3_col(io_pai, milisegundos(PERIODO_COLETOR));
     tempo_tarefa t4_rec(io_pai, milisegundos(PERIODO_RECONSTRUCAO));
     tempo_tarefa t5_con(io_pai, milisegundos(PERIODO_CONTROLE));
 
-    // --- CRIAÇÃO DE SIGNAL ---
+    //CRIAÇÃO DE SIGNAL
     boost::asio::signal_set sinais (io_pai);
     sinais.add(SIGUSR1);
 
@@ -186,6 +182,7 @@ else {
     /*t2_cam.async_wait(boost::asio::bind_executor(strand_camera, 
         std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_camera, std::ref(sinc.mutex_camera), shm)));
     */
+
     sinais.async_wait(
         std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, &t2_cam, &strand_camera,
             std::ref(sinc.mutex_camera), shm, &sinais));
@@ -215,7 +212,9 @@ else {
 
     std::cout << "Sinal de encerramento recebido. Desligando tarefas...\n";
 
-    // --- SINCRONIZAÇÃO FINAL ---
+    io_pai.stop();
+
+    //SINCRONIZAÇÃO FINAL
     for (auto& t : thread_pool) {
         if (t.joinable()) {
             std::cout << "Esperando join da thread...\n";
@@ -236,6 +235,6 @@ else {
     log_message("MAIN", "Execução finalizada. Limpando memória.");
 
     // Desanexa memória no pai
-    //std::remove(SHM_FILE); 
-}
+    std::remove(SHM_FILE); 
+    }
 }   
