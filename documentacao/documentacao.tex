@@ -93,7 +93,7 @@ Ademais, implementou-se o uso de \textit{strands} para otimizar o aproveitamento
 
 A sincronização das tarefas como introduzido anteriormente foi totalemnte readequado para a biblioteca Boost. Foram criadas três strands: \textit{strand\_navegacao}, \textit{strand\_processamento} e \textit{strand\_camera}. As duas primeiras gerenciam as tarefas como ilustrado na figura \ref{fig:arq_sinc}. Já a terceira gerencia apenas a utilização da câmera que não interage diretamente com as outras tarefas.
 
-Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrida} = 20 ms$ e $T_{reconstrucao\_teto} = 100 ms$), a tarefa \textit{distancia\_percorrida} acontece em único ciclo, enquanto a tarefa \textit{reconstrucao\_teto} executa em "lotes", até que se encontre uma falha. Dessa forma, é possível facilitar a sincronização de ambas as filas.
+Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrida} = 20 ms$ e $T_{reconstrucao\_teto} = 100 ms$), a tarefa \textit{distancia\_percorrida} acontece em único ciclo, enquanto a tarefa \textit{reconstrucao\_teto} executa em "lotes", até que se encontre uma falha. Dessa forma, é possível facilitar a sincronização de ambas as filas. A figura \ref{fig:arq_sinc} demonstra a divisão das strands.
 
 \begin{figure}[ht]
   \includegraphics[width=1\linewidth]{imagens/arq_sinc.png}
