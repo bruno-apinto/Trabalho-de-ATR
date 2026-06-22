@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #Teste de Comunicação MQTT
-S#cript para testar a comunicação entre o robô e a operação remota
+#Script para testar a comunicação entre o robô e a operação remota
 
 
 import sys
