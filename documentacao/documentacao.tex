@@ -89,17 +89,23 @@ Ademais, implementou-se o uso de \textit{strands} para otimizar o aproveitamento
 \end{figure}
 
 
-\subsection{Escolha da sincronização}
+\subsection{Periodização}
 
 A sincronização das tarefas como introduzido anteriormente foi totalemnte readequado para a biblioteca Boost. Foram criadas três strands: \textit{strand\_navegacao}, \textit{strand\_processamento} e \textit{strand\_camera}. As duas primeiras gerenciam as tarefas como ilustrado na figura \ref{fig:arq_sinc}. Já a terceira gerencia apenas a utilização da câmera que não interage diretamente com as outras tarefas.
 
-Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrida} = 20 ms$ e $T_{reconstrucao\_teto} = 100 ms$), a tarefa \textit{distancia\_percorrida} acontece em único ciclo, enquanto a tarefa \textit{reconstrucao\_teto} executa em "lotes", até que se encontre uma falha. Dessa forma, é possível facilitar a sincornização e a frequência de ambas filas.
+Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrida} = 20 ms$ e $T_{reconstrucao\_teto} = 100 ms$), a tarefa \textit{distancia\_percorrida} acontece em único ciclo, enquanto a tarefa \textit{reconstrucao\_teto} executa em "lotes", até que se encontre uma falha. Dessa forma, é possível facilitar a sincronização de ambas as filas.
 
 \begin{figure}[ht]
   \includegraphics[width=1\linewidth]{imagens/arq_sinc.png}
   \caption{Divisão das strands.}\label
   {fig:arq_sinc}
 \end{figure}
+
+\subsection{Comunicação}
+
+Como requisitado pelo enunciado do trabalho, é necessário implementar pelo menos uma comunicação interprocesso (IPC) e implementar signal entre duas tarefas, para a utilização da câmera.
+
+As tarefas \textit{comando\_navegacao} e \textit{controle\_navegacao} foram implementadas em processos diferentes. A troca de informações entre eles é feita por meio da Memória Compartilhada, implementada na própria main. A Memória Compartilhada foi implementad apor meio da Biblioteca Boost, que cria um FileDescriptor para troca de informações. Essa abordagem adaptada foi necessária para haver compatibilidade com o sistema MacOS. Porém, a utilização se mantém da mesma forma. Já a utilização do signal foi utilizado entre para comunicar a presença de uma falha no túnel. Em \textit{reconstrucao\_teto}, ao identificar uma variação acima da esperada, o signal \texttt{SIGUSR1} é acionado. A função \textit{signal\_handler} trata esse signal, desacelerando o carrinho e acionando a câmera. 
 
 \section{Resultados de Testes Preliminares Realizados}
 
