@@ -3,11 +3,8 @@
 #include <chrono>
 
 MQTTPublisher::MQTTPublisher(MemoriaCompartilhada* shm, std::mutex& shm_mutex)
-    : shm_(shm), shm_mutex_(shm_mutex), running_(false),
-      last_lidar_value_(-1), last_encoder_state_(false),
-      last_inspection_state_(false), last_auto_state_(false),
-      last_velocity_(0) {
-    
+    : shm_(shm), shm_mutex_(shm_mutex), running_(false) {
+
     mqtt_client_ = std::make_unique<MQTTClient>(
         MQTT_CONFIG::BROKER_ADDRESS,
         MQTT_CONFIG::CLIENT_ID_PUBLISHER
@@ -53,69 +50,44 @@ void MQTTPublisher::stop() {
 }
 
 void MQTTPublisher::publish_loop() {
-    const int PUBLISH_INTERVAL_MS = 100; // Publicar a cada 100ms
-    
+    const int PUBLISH_INTERVAL_MS = 100;
+
     while (running_) {
         try {
-            // Proteger acesso à memória compartilhada com mutex
-            {
-                std::lock_guard<std::mutex> lock(shm_mutex_);
-                
-                // Publicar dados do LIDAR (sensor de distância)
-                if (shm_->i_lidar != last_lidar_value_) {
-                    mqtt_client_->publish_int(
-                        MQTT_CONFIG::PUBLISH_TOPICS::SENSOR_DATA,
-                        shm_->i_lidar,
-                        MQTT_CONFIG::QOS_SENSOR_DATA
-                    );
-                    last_lidar_value_ = shm_->i_lidar;
-                }
-                
-                // Publicar estado do encoder
-                if (shm_->i_encoder != last_encoder_state_) {
-                    mqtt_client_->publish_bool(
-                        MQTT_CONFIG::PUBLISH_TOPICS::ENCODER_DATA,
-                        shm_->i_encoder,
-                        MQTT_CONFIG::QOS_SENSOR_DATA
-                    );
-                    last_encoder_state_ = shm_->i_encoder;
-                }
-                
-                // Publicar status de inspeção
-                if (shm_->e_inspecao != last_inspection_state_) {
-                    mqtt_client_->publish_bool(
-                        MQTT_CONFIG::PUBLISH_TOPICS::INSPECTION_STATUS,
-                        shm_->e_inspecao,
-                        MQTT_CONFIG::QOS_STATUS
-                    );
-                    last_inspection_state_ = shm_->e_inspecao;
-                }
-                
-                // Publicar modo de operação (automático/manual)
-                if (shm_->e_automatico != last_auto_state_) {
-                    mqtt_client_->publish_bool(
-                        MQTT_CONFIG::PUBLISH_TOPICS::NAVIGATION_STATUS,
-                        shm_->e_automatico,
-                        MQTT_CONFIG::QOS_STATUS
-                    );
-                    last_auto_state_ = shm_->e_automatico;
-                }
-                
-                // Publicar velocidade no tópico correto VELOCITY_DATA
-                if (shm_->j_sp_velocidade != last_velocity_) {
-                    mqtt_client_->publish_int(
-                        MQTT_CONFIG::PUBLISH_TOPICS::VELOCITY_DATA,
-                        shm_->j_sp_velocidade,
-                        MQTT_CONFIG::QOS_SENSOR_DATA
-                    );
-                    last_velocity_ = shm_->j_sp_velocidade;
-                }
+            std::lock_guard<std::mutex> lock(shm_mutex_);
+
+            // Publicar sensores e estados periodicamente (sem detecção de mudança)
+            mqtt_client_->publish_int(MQTT_CONFIG::PUBLISH_TOPICS::SENSOR_DATA,
+                                      shm_->i_lidar, MQTT_CONFIG::QOS_SENSOR_DATA);
+            mqtt_client_->publish_bool(MQTT_CONFIG::PUBLISH_TOPICS::ENCODER_DATA,
+                                       shm_->i_encoder, MQTT_CONFIG::QOS_SENSOR_DATA);
+            mqtt_client_->publish_bool(MQTT_CONFIG::PUBLISH_TOPICS::INSPECTION_STATUS,
+                                       shm_->e_inspecao, MQTT_CONFIG::QOS_STATUS);
+            mqtt_client_->publish_bool(MQTT_CONFIG::PUBLISH_TOPICS::NAVIGATION_STATUS,
+                                       shm_->e_automatico, MQTT_CONFIG::QOS_STATUS);
+            mqtt_client_->publish_int(MQTT_CONFIG::PUBLISH_TOPICS::VELOCITY_DATA,
+                                      shm_->j_sp_velocidade, MQTT_CONFIG::QOS_SENSOR_DATA);
+
+            // Publicar perfil do teto quando reconstrução_teto sinalizar novo ponto
+            if (shm_->perfil_novo) {
+                // Formato: "x,y,confianca"
+                std::string perfil_payload =
+                    std::to_string(shm_->posicao_x) + "," +
+                    std::to_string(shm_->perfil_y) + "," +
+                    std::to_string(shm_->perfil_confianca);
+
+                mqtt_client_->publish(MQTT_CONFIG::PUBLISH_TOPICS::TUNNEL_PROFILE,
+                                      perfil_payload, MQTT_CONFIG::QOS_SENSOR_DATA);
+                mqtt_client_->publish(MQTT_CONFIG::PUBLISH_TOPICS::CONFIDENCE_DATA,
+                                      std::to_string(shm_->perfil_confianca),
+                                      MQTT_CONFIG::QOS_SENSOR_DATA);
+                shm_->perfil_novo = false;
             }
-            
+
         } catch (const std::exception& e) {
             std::cerr << "[Publisher] Erro ao publicar: " << e.what() << std::endl;
         }
-        
+
         std::this_thread::sleep_for(std::chrono::milliseconds(PUBLISH_INTERVAL_MS));
     }
 }

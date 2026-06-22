@@ -49,20 +49,38 @@ int main (){
 
     shm->c_encerrar = false;
 
+    shm->variacao_severa = 10.0f; // limiar padrão (configurável via MQTT)
+    shm->posicao_x      = 0.0f;
+    shm->perfil_y       = 0.0f;
+    shm->perfil_confianca = 0.0f;
+    shm->perfil_novo    = false;
+
     // =========================================================================
     // 2. CRIAÇÃO DE PROCESSOS (FORK)
     // =========================================================================
     
     
-    // --- PROCESSO 1: INTERFACE PYGAME ---
+    // --- PROCESSO 1: SIMULAÇÃO (interface.py usa shared memory) ---
     pid_t pid_interface = fork();
     if (pid_interface == 0) {
-        log_message("PROCESSO", "Processo interface Pygame criado");
-        execlp("python3.12", "python3.12", "src/interface.py", nullptr);
+        log_message("PROCESSO", "Processo de simulação Pygame criado");
+        execlp("python3", "python3", "src/interface.py", nullptr);
         perror("Erro ao executar interface.py");
         exit(1);
     } else if (pid_interface < 0) {
         perror("Erro ao criar processo da interface");
+        exit(1);
+    }
+
+    // --- PROCESSO 2: OPERAÇÃO REMOTA (interface_mqtt.py usa MQTT) ---
+    pid_t pid_remoto = fork();
+    if (pid_remoto == 0) {
+        log_message("PROCESSO", "Processo de operação remota MQTT criado");
+        execlp("python3", "python3", "src/interface_mqtt.py", nullptr);
+        perror("Erro ao executar interface_mqtt.py");
+        exit(1);
+    } else if (pid_remoto < 0) {
+        perror("Erro ao criar processo de operação remota");
         exit(1);
     }
     
@@ -100,9 +118,7 @@ if (pid_controle == 0) {
     // Se não chamar run(), as tarefas do filho nunca vão executar!
     io_filho.run(); 
 
-    // Limpeza do filho
-    shmdt(shm);
-    exit(0); 
+    exit(0);
 } 
 else if (pid_controle < 0) {
     perror("Erro ao criar processo de comando\n");
@@ -190,16 +206,14 @@ else {
         thread_pool.emplace_back([&io_pai]() { io_pai.run(); });
     }
 
-    std::cout << "Sistema rodando...\n";
+    std::cout << "Sistema rodando. Feche a janela de simulação para encerrar.\n";
 
-    // Simular tempo de atividade do sistema
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    // Aguarda até que a interface de simulação sinalize o encerramento (janela fechada)
+    while (!shm->c_encerrar) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
 
-    std::cout << "Iniciando processo de desligamento...\n";
-
-    // Modificar a flag faz com que os handlers das tarefas não agendem novas chamadas.
-    // Assim, a fila de tarefas do io_context esvazia naturalmente e o run() encerra.
-    shm->c_encerrar = true;
+    std::cout << "Sinal de encerramento recebido. Desligando tarefas...\n";
 
     // --- SINCRONIZAÇÃO FINAL ---
     for (auto& t : thread_pool) {

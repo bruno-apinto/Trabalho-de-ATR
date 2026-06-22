@@ -6,7 +6,7 @@
 
 // MQTTClient::ActionListener Implementation
 void MQTTClient::ActionListener::on_success(const mqtt::token& tok) {
-    std::cout << "[MQTT] Ação bem-sucedida" << std::endl;
+    // silencioso — dispara a cada publicação
 }
 
 void MQTTClient::ActionListener::on_failure(const mqtt::token& tok) {
@@ -30,8 +30,6 @@ void MQTTClient::Callback::message_arrived(mqtt::const_message_ptr msg) {
     std::string topic = msg->get_topic();
     std::string payload = msg->to_string();
     
-    std::cout << "[MQTT] Mensagem recebida em " << topic << ": " << payload << std::endl;
-    
     // Chamar o callback registrado para este tópico
     auto it = parent_->callbacks_.find(topic);
     if (it != parent_->callbacks_.end()) {
@@ -40,7 +38,7 @@ void MQTTClient::Callback::message_arrived(mqtt::const_message_ptr msg) {
 }
 
 void MQTTClient::Callback::delivery_complete(mqtt::delivery_token_ptr token) {
-    std::cout << "[MQTT] Entrega de mensagem completa" << std::endl;
+    // silencioso — dispara a cada publicação
 }
 
 // MQTTClient Implementation

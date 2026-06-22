@@ -28,6 +28,7 @@ namespace MQTT_CONFIG {
         constexpr const char* COMMAND_MODE = "robot/commands/mode";
         constexpr const char* COMMAND_VELOCITY = "robot/commands/velocity";
         constexpr const char* COMMAND_CAMERA = "robot/commands/camera";
+        constexpr const char* COMMAND_THRESHOLD = "robot/commands/threshold"; // limiar de variação severa
     }
     
     // Configurações de qualidade de serviço

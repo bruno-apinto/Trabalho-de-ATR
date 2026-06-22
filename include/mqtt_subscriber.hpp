@@ -83,6 +83,11 @@ private:
      * @brief Callback para comando de câmera
      */
     void on_camera_command(const std::string& topic, const std::string& payload);
+
+    /**
+     * @brief Callback para atualizar limiar de variação severa
+     */
+    void on_threshold_command(const std::string& topic, const std::string& payload);
 };
 
 #endif

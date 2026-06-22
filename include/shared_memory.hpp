@@ -22,6 +22,15 @@ struct MemoriaCompartilhada {
     int32_t j_sp_velocidade; //Setpoint de velocidade do robô para o controlador de velocidade.
 
     bool c_encerrar; //variável que sinaliza ao programa que a interface foi fechada
+
+    // Parâmetros configuráveis via MQTT
+    float variacao_severa;   // limiar de variação do teto que dispara inspeção (configurável remotamente)
+
+    // Dados de perfil do teto para publicação MQTT
+    float posicao_x;         // posição acumulada do robô em metros (atualizada pelo encoder)
+    float perfil_y;          // última leitura filtrada do teto (média móvel)
+    float perfil_confianca;  // nível de confiança da medição (0.0 a 1.0)
+    bool  perfil_novo;       // sinaliza ao publisher que há novo ponto de perfil disponível
 };
 
 #endif

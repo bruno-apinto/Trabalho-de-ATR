@@ -59,7 +59,15 @@ bool MQTTSubscriber::start() {
         },
         MQTT_CONFIG::QOS_COMMANDS
     );
-    
+
+    mqtt_client_->subscribe(
+        MQTT_CONFIG::SUBSCRIBE_TOPICS::COMMAND_THRESHOLD,
+        [this](const std::string& topic, const std::string& payload) {
+            this->on_threshold_command(topic, payload);
+        },
+        MQTT_CONFIG::QOS_COMMANDS
+    );
+
     running_ = true;
     
     // Iniciar thread dedicada para o subscritor
@@ -87,6 +95,7 @@ void MQTTSubscriber::stop() {
     mqtt_client_->unsubscribe(MQTT_CONFIG::SUBSCRIBE_TOPICS::COMMAND_MODE);
     mqtt_client_->unsubscribe(MQTT_CONFIG::SUBSCRIBE_TOPICS::COMMAND_VELOCITY);
     mqtt_client_->unsubscribe(MQTT_CONFIG::SUBSCRIBE_TOPICS::COMMAND_CAMERA);
+    mqtt_client_->unsubscribe(MQTT_CONFIG::SUBSCRIBE_TOPICS::COMMAND_THRESHOLD);
     
     mqtt_client_->disconnect();
     
@@ -171,16 +180,31 @@ void MQTTSubscriber::on_camera_command(const std::string& topic, const std::stri
     (void)topic;
 
     std::cout << "[Subscriber] Comando de câmera: " << payload << std::endl;
-    
-    // Proteger acesso à memória compartilhada com mutex
+
     std::lock_guard<std::mutex> lock(shm_mutex_);
-    
-    // Payload: "1" ou "true" para ligar, "0" ou "false" para desligar
+
     if (payload == "1" || payload == "true") {
         shm_->o_liga_camera = true;
         std::cout << "[Subscriber] Câmera LIGADA" << std::endl;
     } else if (payload == "0" || payload == "false") {
         shm_->o_liga_camera = false;
         std::cout << "[Subscriber] Câmera DESLIGADA" << std::endl;
+    }
+}
+
+void MQTTSubscriber::on_threshold_command(const std::string& topic, const std::string& payload) {
+    (void)topic;
+
+    try {
+        float limiar = std::stof(payload);
+        if (limiar > 0.0f && limiar <= 200.0f) {
+            std::lock_guard<std::mutex> lock(shm_mutex_);
+            shm_->variacao_severa = limiar;
+            std::cout << "[Subscriber] Limiar de variação severa atualizado para: " << limiar << std::endl;
+        } else {
+            std::cerr << "[Subscriber] Limiar fora dos limites (0, 200]: " << limiar << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Subscriber] Erro ao processar limiar: " << e.what() << std::endl;
     }
 }

@@ -22,7 +22,9 @@ class RobotMQTTClient:
             "encoder": False,
             "inspection_active": False,
             "automatic_mode": False,
-            "velocity": 0
+            "velocity": 0,
+            "tunnel_profile": [],   # lista de (x, y, confianca)
+            "confidence": 0.0,
         }
         
         # Callbacks para atualizações de dados
@@ -31,12 +33,13 @@ class RobotMQTTClient:
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print("[MQTT] Conectado ao broker MQTT")
-            # Assinar aos tópicos de dados do robô
             client.subscribe("robot/sensors/lidar", qos=1)
             client.subscribe("robot/sensors/encoder", qos=1)
             client.subscribe("robot/status/inspection", qos=1)
             client.subscribe("robot/status/navigation", qos=1)
             client.subscribe("robot/data/velocity", qos=1)
+            client.subscribe("robot/data/tunnel_profile", qos=1)  # perfil do teto (x,y,conf)
+            client.subscribe("robot/data/confidence", qos=1)       # nível de confiança
         else:
             print(f"[MQTT] Falha na conexão: {rc}")
     
@@ -68,6 +71,23 @@ class RobotMQTTClient:
         elif topic == "robot/data/velocity":
             try:
                 self.robot_data["velocity"] = int(payload)
+            except ValueError:
+                pass
+        elif topic == "robot/data/tunnel_profile":
+            # Formato: "x,y,confianca"
+            try:
+                partes = payload.split(",")
+                if len(partes) == 3:
+                    ponto = (float(partes[0]), float(partes[1]), float(partes[2]))
+                    self.robot_data["tunnel_profile"].append(ponto)
+                    # Mantém apenas os últimos 200 pontos para não crescer indefinidamente
+                    if len(self.robot_data["tunnel_profile"]) > 200:
+                        self.robot_data["tunnel_profile"].pop(0)
+            except ValueError:
+                pass
+        elif topic == "robot/data/confidence":
+            try:
+                self.robot_data["confidence"] = float(payload)
             except ValueError:
                 pass
         
@@ -118,6 +138,12 @@ class RobotMQTTClient:
         value = "1" if enable else "0"
         self.client.publish("robot/commands/camera", value, qos=1)
         print(f"[MQTT] Câmera: {'LIGADA' if enable else 'DESLIGADA'}")
+
+    def send_threshold_command(self, threshold: float):
+        """Enviar novo limiar de variação severa para o robô"""
+        if 0.0 < threshold <= 200.0:
+            self.client.publish("robot/commands/threshold", f"{threshold:.1f}", qos=1)
+            print(f"[MQTT] Limiar de variação atualizado para: {threshold:.1f}")
     
     def register_callback(self, callback):
         """Registrar callback para receber atualizações de dados"""

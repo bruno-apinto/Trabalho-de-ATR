@@ -2,7 +2,7 @@ import pygame, sys, ctypes
 from pygame.locals import *
 import mmap
 from pathlib import Path
-import time, math, os, random
+import time, math, random
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -10,19 +10,22 @@ SHM_FILE = "/tmp/memoria_compartilhada.bin"
 
 class MemoriaCompartilhada(ctypes.Structure):
     _fields_ = [
-        ("i_encoder", ctypes.c_bool),
-        ("i_lidar", ctypes.c_int),
-
-        ("o_liga_camera", ctypes.c_bool),
-        ("o_aceleracao", ctypes.c_int),
-
-        ("e_inspecao", ctypes.c_bool),
-        ("e_automatico", ctypes.c_bool),
-        ("c_automatico", ctypes.c_bool),
-        ("c_man", ctypes.c_bool),
-        ("j_sp_velocidade", ctypes.c_int),
-
-        ("c_encerrar", ctypes.c_bool),
+        ("i_encoder",        ctypes.c_bool),
+        ("i_lidar",          ctypes.c_int),
+        ("o_liga_camera",    ctypes.c_bool),
+        ("o_aceleracao",     ctypes.c_int),
+        ("e_inspecao",       ctypes.c_bool),
+        ("e_automatico",     ctypes.c_bool),
+        ("c_automatico",     ctypes.c_bool),
+        ("c_man",            ctypes.c_bool),
+        ("j_sp_velocidade",  ctypes.c_int),
+        ("c_encerrar",       ctypes.c_bool),
+        # Campos adicionados na Etapa 2 (devem espelhar o struct C++ exatamente)
+        ("variacao_severa",  ctypes.c_float),
+        ("posicao_x",        ctypes.c_float),
+        ("perfil_y",         ctypes.c_float),
+        ("perfil_confianca", ctypes.c_float),
+        ("perfil_novo",      ctypes.c_bool),
     ]
 
 def abrir_memoria_compartilhada(): #Abre a memória compartilhada criada pelo processo C++.
@@ -103,49 +106,51 @@ velocidade = 0.0 #velocidade do carrinho em pixels/segundo
 
 posicao = 0.0 #posição do carrinho em pixels
 
-anomalias = [] #lista de anomalias detectadas, para exibir na interface
+anomalias = []
+
+# Pool determinístico: gerado uma vez com seed fixo → mesma sequência em ambas as interfaces.
+# Cada entrada i do pool define completamente a i-ésima anomalia (espaçamento, tipo, curva).
+# Ambas as interfaces consomem o pool na mesma ordem → falhas sempre idênticas.
+random.seed(42)
+_N_POOL = 2000
+_pool = [(random.randint(200, 700),
+          random.choice(["buraco", "protuberancia"]),
+          random.randint(30, 70)) for _ in range(_N_POOL)]
+_seq = 0   # próximo índice do pool a consumir
 
 def cria_anomalia(posicao_x):
-    tipo = random.choice(["buraco", "protuberancia"])
-
-    if tipo == "buraco":
-        imagem = falha_buraco
-    else:
-        imagem = falha_protuberancia
-    
-    redimensionada = pygame.transform.smoothscale(imagem, (200, 120))
-    curva = random.randint(30, 70)
-
-    return {"tipo": tipo, "x": float(posicao_x), "largura": 200, "altura": 120, "curva": curva, "img": redimensionada}
+    global _seq
+    _, tipo, curva = _pool[_seq % _N_POOL]
+    _seq += 1
+    imagem = falha_buraco if tipo == "buraco" else falha_protuberancia
+    redimensionada = pygame.transform.smoothscale(imagem, (230, 149))
+    return {"tipo": tipo, "x": float(posicao_x), "largura": 200, "altura": 130,
+            "curva": curva, "img": redimensionada}
 
 def anomalias_iniciais():
-    anomalias.clear() # apaga anomalias atuais
+    global _seq
+    _seq = 0
+    anomalias.clear()
     proxima_posicao = largura_tela
-    for _ in range(5):
-        proxima_posicao += random.randint(200, 700)
+    for i in range(5):
+        proxima_posicao += _pool[i][0]   # espaçamento do pool (mesma entrada que cria_anomalia usará)
         anomalias.append(cria_anomalia(proxima_posicao))
 
-def anomalias_automaticas(): # faz o fundo ficar infinito
-
+def anomalias_automaticas():
     if not anomalias:
         return
-    
-    maior_posicao = max((anomalia["x"] for anomalia in anomalias))
-
+    maior_posicao = max(a["x"] for a in anomalias)
     for indice, anomalia in enumerate(anomalias):
-        fim_anomalia = (anomalia["x"] + anomalia["largura"])
-
-        if fim_anomalia < posicao - 200:
-            maior_posicao += random.randint(200, 700)
+        if anomalia["x"] + anomalia["largura"] < posicao - 200:
+            maior_posicao += _pool[_seq % _N_POOL][0]   # espaçamento da próxima entrada do pool
             anomalias[indice] = cria_anomalia(maior_posicao)
 
-anomalias_iniciais() # inicializa as anomalias
+anomalias_iniciais()
 
 def desenha_anomalias():
     for anomalia in anomalias:
         x_tela = int(anomalia["x"] - posicao)
         largura = anomalia["largura"]
-        altura = anomalia["altura"]
 
         if (x_tela < -largura or x_tela > largura_tela):
             continue
@@ -178,6 +183,7 @@ def calcula_lidar():
 
             break
 
+    leitura += random.gauss(0, 2.0)  # ruído gaussiano ±2mm (sensor real)
     return max(0, int(round(leitura)))
 
 def atualiza_sensores():
@@ -187,21 +193,18 @@ def atualiza_sensores():
 def display_lidar():
     sensorx = int(carx + 70)
     sensory = cary + 24
-    diferenca = distancia_teto
     pygame.draw.line(DISPLAY, (0, 255, 0), (sensorx, sensory), (sensorx, base_teto), 2)
 
-def alertas():
-    if memoria.e_inspecao:
-        font = pygame.font.SysFont(None, 36)
-        texto = font.render("INSPEÇÃO ATIVA", True, (255, 0, 0))
-        DISPLAY.blit(texto, (10, 10))
 
 def movimenta_carrinho(delta_tempo):
     global posicao, velocidade
 
-    velocidade += (memoria.j_sp_velocidade + memoria.o_aceleracao) * delta_tempo
-    posicao += velocidade * delta_tempo
+    # j_sp_velocidade (0-100) é mapeado para pixels/s com fator 4 → sp=50 ≈ 200 px/s
+    # o_aceleracao é um ajuste adicional (ex: -5 durante inspeção)
+    alvo = float(memoria.j_sp_velocidade) * 4.0 + float(memoria.o_aceleracao) * 4.0
 
+    # Convergência suave com tau ≈ 0.2s
+    velocidade += (alvo - velocidade) * min(delta_tempo * 15.0, 1.0)
     posicao += velocidade * delta_tempo
 
 def encerra_interface(): 
@@ -244,12 +247,11 @@ while True: # ciclo principal
                 else:
                     memoria.j_sp_velocidade = 0
 
-            # M: modo manual
+            # M: modo manual (mantém velocidade atual; use setas para ajustar)
             if event.key == K_m:
                 memoria.c_man = True
                 memoria.c_automatico = False
                 memoria.e_automatico = False
-                memoria.j_sp_velocidade = 0
 
             # Seta para cima: aumenta setpoint de velocidade
             if event.key == K_UP:
@@ -273,7 +275,7 @@ while True: # ciclo principal
 
     desenha_anomalias()
     display_lidar()
-    alertas()
+
 
     DISPLAY.blit(carImg, (carx, cary))
 

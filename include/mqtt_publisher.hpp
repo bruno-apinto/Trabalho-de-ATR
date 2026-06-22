@@ -59,13 +59,6 @@ private:
     std::thread publish_thread_;
     std::atomic<bool> running_;
     
-    // Variáveis para rastrear mudanças
-    int last_lidar_value_;
-    bool last_encoder_state_;
-    bool last_inspection_state_;
-    bool last_auto_state_;
-    int last_velocity_;
-    
     /**
      * @brief Loop de publicação (executado em thread separada)
      */
