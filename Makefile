@@ -24,7 +24,12 @@ $(TARGET): $(OBJS)
 run: $(TARGET)
 	./$(TARGET)
 
+test: src/test_sistema.cpp
+	$(CXX) $(CXXFLAGS) src/test_sistema.cpp -o test_sistema
+	./test_sistema
+	python3 src/test_sistema.py
+
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) test_sistema
 
 rebuild: clean all
