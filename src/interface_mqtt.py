@@ -524,8 +524,7 @@ class InterfaceRobo:
             "1-9: Ajustar velocidade",
             "A: Modo Automático | M: Modo Manual",
             "C: Câmera ON/OFF",
-            "[: Diminuir limiar  ]: Aumentar limiar",
-            "SETAS: Movimento manual",
+            "SETAS: Mover",
             "Q: Sair"
         ]
 
@@ -738,25 +737,6 @@ def main():
                             not interface.camera_on
                         )
 
-                    # Navegação
-                    if event.key == pygame.K_f:
-
-                        interface.send_navigation_command(
-                            "forward"
-                        )
-
-                    if event.key == pygame.K_b:
-
-                        interface.send_navigation_command(
-                            "backward"
-                        )
-
-                    if event.key == pygame.K_s:
-
-                        interface.send_navigation_command(
-                            "stop"
-                        )
-
                     # Velocidade
                     if pygame.K_1 <= event.key <= pygame.K_9:
 
@@ -772,13 +752,6 @@ def main():
 
                         interface.velocidade_atual = vel  # atualização local imediata
                         interface.send_velocity(vel)
-
-                    # Limiar de variação severa ([ diminui, ] aumenta)
-                    if event.key == pygame.K_LEFTBRACKET:
-                        interface.send_threshold(-1.0)
-
-                    if event.key == pygame.K_RIGHTBRACKET:
-                        interface.send_threshold(+1.0)
 
                     # Sair
                     if event.key == pygame.K_q:
