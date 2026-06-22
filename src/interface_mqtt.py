@@ -290,7 +290,7 @@ class InterfaceRobo:
         print(f"Limiar enviado: {self.limiar:.1f}")
 
     # SIMULAÇÃO VISUAL
-    def update_simulation(self, delta_time, keys):
+    def update_simulation(self, delta_time):
 
         """
         Atualizar movimentação visual
@@ -310,12 +310,6 @@ class InterfaceRobo:
             self.posicao = self.posicao_x_real * 100.0 + self.posicao_vel * LAG_S
             self._pos_sincronizada = True
 
-        # Movimento manual opcional
-        if keys[pygame.K_LEFT]:
-            self.posicao -= 200 * delta_time
-
-        if keys[pygame.K_RIGHT]:
-            self.posicao += 200 * delta_time
 
         # Regenera anomalias conforme o robô avança (igual à interface.py)
         anomalias_automaticas(self.posicao)
@@ -524,7 +518,7 @@ class InterfaceRobo:
             "1-9: Ajustar velocidade",
             "A: Modo Automático | M: Modo Manual",
             "C: Câmera ON/OFF",
-            "SETAS: Mover",
+            "SETAS: Mover (manual)  ESPAÇO: Parar (manual)",
             "Q: Sair"
         ]
 
@@ -753,19 +747,25 @@ def main():
                         interface.velocidade_atual = vel  # atualização local imediata
                         interface.send_velocity(vel)
 
+                    # Navegação manual: setas movem o robô, espaço para
+                    if not interface.modo_automatico:
+                        if event.key == pygame.K_RIGHT:
+                            interface.velocidade_atual = min(interface.velocidade_atual + 20, 100)
+                            interface.send_navigation_command("forward")
+                        if event.key == pygame.K_LEFT:
+                            interface.velocidade_atual = max(interface.velocidade_atual - 20, -100)
+                            interface.send_navigation_command("backward")
+                        if event.key == pygame.K_SPACE:
+                            interface.velocidade_atual = 0
+                            interface.send_navigation_command("stop")
+
                     # Sair
                     if event.key == pygame.K_q:
                         running = False
 
 
-            # TECLAS PRESSIONADAS
-            keys = pygame.key.get_pressed()
-
             # ATUALIZAR
-            interface.update_simulation(
-                delta_time,
-                keys
-            )
+            interface.update_simulation(delta_time)
 
             # DESENHAR
             interface.draw()

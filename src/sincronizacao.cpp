@@ -194,6 +194,9 @@ void distancia_percorrida(const boost::system::error_code& e, boost::asio::stead
         }
         s_t_ultimo_encoder = agora_enc;
         s_encoder_ativo = true;
+        // posicao_x é um odômetro de distância percorrida, não de deslocamento:
+        // sempre incrementa independentemente da direção. Em modo manual remoto,
+        // recuar também aumenta posicao_x pois o encoder não carrega sinal de direção.
         shm->posicao_x += 1.0f;
         ultimo_encoder = encoder_atual;
     } else if (s_encoder_ativo) {

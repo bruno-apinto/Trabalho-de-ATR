@@ -118,7 +118,16 @@ void MQTTSubscriber::subscriber_loop() {
 
 void MQTTSubscriber::on_navigation_command(const std::string& topic, const std::string& payload) {
     (void)topic;
-    (void)payload;
+
+    std::lock_guard<std::mutex> lock(shm_mutex_);
+
+    if (payload == "forward") {
+        shm_->j_sp_velocidade = std::min(shm_->j_sp_velocidade + 20, 100);
+    } else if (payload == "backward") {
+        shm_->j_sp_velocidade = std::max(shm_->j_sp_velocidade - 20, -100);
+    } else if (payload == "stop") {
+        shm_->j_sp_velocidade = 0;
+    }
 }
 
 void MQTTSubscriber::on_mode_command(const std::string& topic, const std::string& payload) {
