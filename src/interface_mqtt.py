@@ -487,7 +487,7 @@ class InterfaceRobo:
         y_offset += 30
 
         text = font.render(
-            f"Posição X: {self.posicao_x_real:.2f} m",
+            f"Distância percorrida: {self.posicao_x_real:.2f} m",
             True,
             BLACK
         )
@@ -615,7 +615,7 @@ class InterfaceRobo:
                                        plot_y + plot_h // 2 - label_y_rot.get_height() // 2))
 
         # Label eixo X
-        label_x = font_eixo.render("Posição Horizontal (m)", True, BLACK)
+        label_x = font_eixo.render("Distância percorrida (m)", True, BLACK)
         DISPLAYSURF.blit(label_x, (plot_x + plot_w // 2 - label_x.get_width() // 2,
                                    plot_y + plot_h + 16))
 
