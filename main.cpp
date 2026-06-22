@@ -55,12 +55,10 @@ int main (){
     shm->perfil_confianca = 0.0f;
     shm->perfil_novo    = false;
 
-    // =========================================================================
-    // 2. CRIAÇÃO DE PROCESSOS (FORK)
-    // =========================================================================
+
+    // CRIAÇÃO DE PROCESSOS (FORK)
     
-    
-    // --- PROCESSO 1: SIMULAÇÃO (interface.py usa shared memory) ---
+    // PROCESSO 1: SIMULAÇÃO (interface.py usa shared memory) 
     pid_t pid_interface = fork();
     if (pid_interface == 0) {
         log_message("PROCESSO", "Processo de simulação Pygame criado");
@@ -72,7 +70,7 @@ int main (){
         exit(1);
     }
 
-    // --- PROCESSO 2: OPERAÇÃO REMOTA (interface_mqtt.py usa MQTT) ---
+    //PROCESSO 2: OPERAÇÃO REMOTA (interface_mqtt.py usa MQTT)
     pid_t pid_remoto = fork();
     if (pid_remoto == 0) {
         log_message("PROCESSO", "Processo de operação remota MQTT criado");
@@ -85,13 +83,11 @@ int main (){
     }
     
 
- // --- PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI) ---
+ // PROCESSO 2: COMANDO (FILHO) E CONTROLE (PAI)
 pid_t pid_controle = fork();
 
 if (pid_controle == 0) {
-    // ---------------------------------------------------------------------
     // BLOCO DO FILHO: COMANDO DE NAVEGAÇÃO
-    // ---------------------------------------------------------------------
     log_message("PROCESSO", "Processo comando_navegacao criado");
 
     file_mapping shm_child(SHM_FILE, read_write); // abre a memória compartilhada criada
@@ -99,7 +95,7 @@ if (pid_controle == 0) {
     mapped_region region_child(shm_child, read_write);
     MemoriaCompartilhada* shm_filho = static_cast<MemoriaCompartilhada*>(region_child.get_address());
 
-    // 1. Instanciar o Asio APENAS para o filho
+    // Instanciar o Asio APENAS para o filho
     boost::asio::io_context io_filho;
     boost::asio::io_context::strand strand_filho(io_filho);
 
@@ -114,8 +110,7 @@ if (pid_controle == 0) {
             std::cout << "c_automatico = " << shm_filho->c_automatico << std::endl;
             std::cout << "j_sp_velocidade = " << shm_filho->j_sp_velocidade << std::endl;
 
-    // 2. Iniciar o laço de eventos do filho (Descomentado)
-    // Se não chamar run(), as tarefas do filho nunca vão executar!
+    // Iniciar o laço de eventos do filho 
     io_filho.run(); 
 
     exit(0);
@@ -125,10 +120,7 @@ else if (pid_controle < 0) {
     exit(1);
 } 
 else {
-    // ---------------------------------------------------------------------
     // BLOCO DO PAI: CONTROLE DE NAVEGAÇÃO E SENSORIAMENTO
-    // ---------------------------------------------------------------------
-
     log_message("PROCESSO", "Processo de controle de navegação iniciado");
 
     std::mutex shm_mutex;
@@ -161,7 +153,7 @@ else {
     boost::asio::signal_set sinais (io_pai);
     sinais.add(SIGUSR1);
 
-    // --- AGENDAMENTO DAS TAREFAS (ASYNC_WAIT) ---
+    // AGENDAMENTO DAS TAREFAS (ASYNC_WAIT)
     log_message("MAIN", "Agendando tarefas assíncronas...");
 
     // Associando à Strand de Navegação (Crítica)
@@ -178,17 +170,12 @@ else {
     t3_col.async_wait(boost::asio::bind_executor(strand_processamento, 
         std::bind(coletor_dados, std::placeholders::_1, &t3_col, &strand_processamento, shm, std::ref(sinc))));
 
-    // Associando à Strand da Câmera (Isolada)
-    /*t2_cam.async_wait(boost::asio::bind_executor(strand_camera, 
-        std::bind(inspecao_camera, std::placeholders::_1, &t2_cam, &strand_camera, std::ref(sinc.mutex_camera), shm)));
-    */
-
     sinais.async_wait(
         std::bind(handler_signal, std::placeholders::_1, std::placeholders::_2, &t2_cam, &strand_camera,
             std::ref(sinc.mutex_camera), shm, &sinais));
 
-    // --- EXECUÇÃO (THREAD POOL) ---
-    // 5. Reativar o Pool de Threads. Com 4 threads, as nossas 3 Strands podem rodar 
+    // EXECUÇÃO (THREAD POOL)
+    // Reativar o Pool de Threads. Com 4 threads, as nossas 3 Strands podem rodar 
     // simultaneamente em núcleos reais do processador.
 
     while (!shm->c_automatico) {

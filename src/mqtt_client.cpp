@@ -5,7 +5,7 @@
 #include <thread>
 
 // MQTTClient::ActionListener Implementation
-void MQTTClient::ActionListener::on_success(const mqtt::token& tok) {
+void MQTTClient::ActionListener::on_success(const mqtt::token&) {
     // silencioso — dispara a cada publicação
 }
 
@@ -37,7 +37,7 @@ void MQTTClient::Callback::message_arrived(mqtt::const_message_ptr msg) {
     }
 }
 
-void MQTTClient::Callback::delivery_complete(mqtt::delivery_token_ptr token) {
+void MQTTClient::Callback::delivery_complete(mqtt::delivery_token_ptr) {
     // silencioso — dispara a cada publicação
 }
 

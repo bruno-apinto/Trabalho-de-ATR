@@ -27,8 +27,6 @@ std::mutex mutex_log;
 int miss[4] = {0, 0, 0, 0};
 int executado[4] = {0, 0, 0, 0};
 
-// Tolerância máxima de atraso em microssegundos antes de considerar um "Miss de Deadline"
-const long long LIMITE_ATRASO_US = 5000;
 
 // Estimativa de velocidade compartilhada entre distancia_percorrida e controle_navegacao.
 // Ambas as tarefas rodam na mesma strand (strand_navegacao), portanto sem corrida de dados.
@@ -51,17 +49,14 @@ float numero_aleatorio_debugg() {
     return dis(gen);
 }
 
-// =========================================================================
+
 // FUNÇÃO AUXILIAR DE TEMPO REAL
-// =========================================================================
 void reagendar_tarefa(boost::asio::steady_timer* t, int periodo_us, const std::string& nome_tarefa) {
     auto agora = std::chrono::steady_clock::now();
     auto atraso = std::chrono::duration_cast<std::chrono::milliseconds>(agora - t->expiry()).count();
-
-    // Comentado para não poluir o log no modo Oversampling rápido
-    // if (atraso > LIMITE_ATRASO_US) {
-    //     log_message(nome_tarefa, "ALERTA: Deadline violado! Atraso de " + std::to_string(atraso) + " us");
-    // }
+    if (atraso > 5000) {
+        log_message(nome_tarefa, "ALERTA: Deadline violado! Atraso de " + std::to_string(atraso) + " ms");
+    }
 
     auto proximo_ciclo = t->expiry() + boost::asio::chrono::milliseconds(periodo_us);
     
@@ -92,10 +87,7 @@ void handler_signal(const boost::system::error_code& error, int signal_number,
 }
 
 
-// =========================================================================
 // TAREFAS ASSÍNCRONAS DO SISTEMA
-// =========================================================================
-
 void comando_navegacao(const boost::system::error_code& e, boost::asio::steady_timer* t,
                        boost::asio::io_context::strand* strand, MemoriaCompartilhada* shm)
 {
@@ -147,7 +139,7 @@ void controle_navegacao(const boost::system::error_code& e, boost::asio::steady_
         miss[0]++;
     }
 
-    // ── Controlador PID de velocidade ────────────────────────────────────────
+    // Controlador PID de velocidade
     // Computa P, I e D a partir do encoder. Em um sistema embarcado real a
     // saída acionaria o driver de motor; aqui a simulação Python já gerencia a
     // física da velocidade, então a saída é calculada mas não sobrescreve
@@ -174,7 +166,7 @@ void controle_navegacao(const boost::system::error_code& e, boost::asio::steady_
         [[maybe_unused]] float saida_pid =
             std::clamp(Kp * erro + Ki * integral + Kd * derivada, -100.0f, 100.0f);
     }
-    // ─────────────────────────────────────────────────────────────────────────
+
 
     reagendar_tarefa(t, PERIODO_CONTROLE, "CONTROLE");
     t->async_wait(boost::asio::bind_executor(*strand,
@@ -458,7 +450,6 @@ void inspecao_camera(const boost::system::error_code& e, boost::asio::steady_tim
             log_message("CAMERA", "Inspeção iniciada — processamento de imagem em curso");
 
             // Simula carga de CPU real: análise de imagem por visão computacional embarcada
-            // (substitui sleep — usa o processador de fato, como exigido pelo enunciado)
             volatile float acumulador = 0.0f;
             for (int i = 1; i <= 800000; ++i) {
                 acumulador += std::sqrt(static_cast<float>(i)) *

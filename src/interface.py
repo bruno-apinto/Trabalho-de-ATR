@@ -92,15 +92,6 @@ falha_buraco = pygame.transform.scale(falha_buraco, (250, 147))
 falha_protuberancia = pygame.image.load(str(BASE_DIR / 'falha_protuberancia.png'))
 falha_protuberancia = pygame.transform.scale(falha_protuberancia, (250, 147))
 
-distancia_teto  = cary + base_teto # distância do teto até o topo do carro
-altura_buraco = falha_buraco.get_height() # altura das falhas
-altura_protuberancia = falha_protuberancia.get_height() # altura da protuberância
-
-# Posições das falhas na parte superior do túnel (teto)
-falhas = [
-    {'img': falha_buraco, 'x': 300, 'y': tunel_y + 0},
-    {'img': falha_protuberancia, 'x': 700, 'y': tunel_y + 0},
-]
 
 velocidade = 0.0 #velocidade do carrinho em pixels/segundo
 
@@ -200,10 +191,10 @@ def movimenta_carrinho(delta_tempo):
     global posicao, velocidade
 
     # j_sp_velocidade (0-100) é mapeado para pixels/s com fator 4 → sp=50 ≈ 200 px/s
-    # o_aceleracao é um ajuste adicional (ex: -5 durante inspeção)
+    # o_aceleracao é um ajuste adicional (ex: -30 durante inspeção)
     alvo = float(memoria.j_sp_velocidade) * 4.0 + float(memoria.o_aceleracao) * 4.0
 
-    # Convergência suave com tau ≈ 0.2s
+    # Convergência suave com tau ≈ 0.07s (fator 15.0 → ~2 frames a 30fps)
     velocidade += (alvo - velocidade) * min(delta_tempo * 15.0, 1.0)
     posicao += velocidade * delta_tempo
 

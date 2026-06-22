@@ -14,7 +14,7 @@
 #define PERIODO_RECONSTRUCAO 80
 
 struct VarCondSinc {
-    // === BUFFER 1: NAVEGAÇÃO ===
+    // BUFFER 1: NAVEGAÇÃO
     std::vector<float> BUFFER_NAVEGACAO = std::vector<float>(ELEMENTOS_BUFFERS);
     int ESC_IDX_NAVEG = 0;     // Onde o produtor escreve
     int LER_IDX_NAVEG_C = 0;   // Onde o Controle lê

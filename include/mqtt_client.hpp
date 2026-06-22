@@ -21,13 +21,10 @@ public:
      */
     class ActionListener : public virtual mqtt::iaction_listener {
     public:
-        ActionListener(MQTTClient* parent) : parent_(parent) {}
-        
+        ActionListener() {}
+
         void on_success(const mqtt::token& tok) override;
         void on_failure(const mqtt::token& tok) override;
-        
-    private:
-        MQTTClient* parent_;
     };
     
     /**
