@@ -290,7 +290,7 @@ class InterfaceRobo:
         print(f"Limiar enviado: {self.limiar:.1f}")
 
     # SIMULAÇÃO VISUAL
-    def update_simulation(self, delta_time, keys):
+    def update_simulation(self, delta_time):
 
         """
         Atualizar movimentação visual
@@ -310,12 +310,6 @@ class InterfaceRobo:
             self.posicao = self.posicao_x_real * 100.0 + self.posicao_vel * LAG_S
             self._pos_sincronizada = True
 
-        # Movimento manual opcional
-        if keys[pygame.K_LEFT]:
-            self.posicao -= 200 * delta_time
-
-        if keys[pygame.K_RIGHT]:
-            self.posicao += 200 * delta_time
 
         # Regenera anomalias conforme o robô avança (igual à interface.py)
         anomalias_automaticas(self.posicao)
@@ -493,7 +487,7 @@ class InterfaceRobo:
         y_offset += 30
 
         text = font.render(
-            f"Posição X: {self.posicao_x_real:.2f} m",
+            f"Distância percorrida: {self.posicao_x_real:.2f} m",
             True,
             BLACK
         )
@@ -524,8 +518,7 @@ class InterfaceRobo:
             "1-9: Ajustar velocidade",
             "A: Modo Automático | M: Modo Manual",
             "C: Câmera ON/OFF",
-            "[: Diminuir limiar  ]: Aumentar limiar",
-            "SETAS: Movimento manual",
+            "SETAS: Mover (manual)  ESPAÇO: Parar (manual)",
             "Q: Sair"
         ]
 
@@ -622,7 +615,7 @@ class InterfaceRobo:
                                        plot_y + plot_h // 2 - label_y_rot.get_height() // 2))
 
         # Label eixo X
-        label_x = font_eixo.render("Posição Horizontal (m)", True, BLACK)
+        label_x = font_eixo.render("Distância percorrida (m)", True, BLACK)
         DISPLAYSURF.blit(label_x, (plot_x + plot_w // 2 - label_x.get_width() // 2,
                                    plot_y + plot_h + 16))
 
@@ -738,25 +731,6 @@ def main():
                             not interface.camera_on
                         )
 
-                    # Navegação
-                    if event.key == pygame.K_f:
-
-                        interface.send_navigation_command(
-                            "forward"
-                        )
-
-                    if event.key == pygame.K_b:
-
-                        interface.send_navigation_command(
-                            "backward"
-                        )
-
-                    if event.key == pygame.K_s:
-
-                        interface.send_navigation_command(
-                            "stop"
-                        )
-
                     # Velocidade
                     if pygame.K_1 <= event.key <= pygame.K_9:
 
@@ -773,26 +747,25 @@ def main():
                         interface.velocidade_atual = vel  # atualização local imediata
                         interface.send_velocity(vel)
 
-                    # Limiar de variação severa ([ diminui, ] aumenta)
-                    if event.key == pygame.K_LEFTBRACKET:
-                        interface.send_threshold(-1.0)
-
-                    if event.key == pygame.K_RIGHTBRACKET:
-                        interface.send_threshold(+1.0)
+                    # Navegação manual: setas movem o robô, espaço para
+                    if not interface.modo_automatico:
+                        if event.key == pygame.K_RIGHT:
+                            interface.velocidade_atual = min(interface.velocidade_atual + 20, 100)
+                            interface.send_navigation_command("forward")
+                        if event.key == pygame.K_LEFT:
+                            interface.velocidade_atual = max(interface.velocidade_atual - 20, -100)
+                            interface.send_navigation_command("backward")
+                        if event.key == pygame.K_SPACE:
+                            interface.velocidade_atual = 0
+                            interface.send_navigation_command("stop")
 
                     # Sair
                     if event.key == pygame.K_q:
                         running = False
 
 
-            # TECLAS PRESSIONADAS
-            keys = pygame.key.get_pressed()
-
             # ATUALIZAR
-            interface.update_simulation(
-                delta_time,
-                keys
-            )
+            interface.update_simulation(delta_time)
 
             # DESENHAR
             interface.draw()

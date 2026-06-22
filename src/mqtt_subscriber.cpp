@@ -119,18 +119,14 @@ void MQTTSubscriber::subscriber_loop() {
 void MQTTSubscriber::on_navigation_command(const std::string& topic, const std::string& payload) {
     (void)topic;
 
-    std::cout << "[Subscriber] Comando de navegação: " << payload << std::endl;
-    
-    // Proteger acesso à memória compartilhada com mutex
     std::lock_guard<std::mutex> lock(shm_mutex_);
-    
-    // Exemplos de comandos: "forward", "backward", "stop"
+
     if (payload == "forward") {
-        shm_->o_aceleracao = 50;
+        shm_->j_sp_velocidade = std::min(shm_->j_sp_velocidade + 20, 100);
     } else if (payload == "backward") {
-        shm_->o_aceleracao = -50;
+        shm_->j_sp_velocidade = std::max(shm_->j_sp_velocidade - 20, -100);
     } else if (payload == "stop") {
-        shm_->o_aceleracao = 0;
+        shm_->j_sp_velocidade = 0;
     }
 }
 
