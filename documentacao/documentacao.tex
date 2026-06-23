@@ -105,9 +105,47 @@ Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrid
 
 \subsection{Comunicação}
 
-Como requisitado pelo enunciado do trabalho, é necessário implementar pelo menos uma comunicação interprocesso (IPC) e implementar signal entre duas tarefas, para a utilização da câmera.
+Conforme exigido pelo escopo do trabalho, o projeto contempla três requisitos principais: o uso de comunicação interprocessos (IPC), o envio de sinais (\textit{signals}) entre duas tarefas para o acionamento da câmera e a integração de um \textit{broker} para a comunicação com as interfaces.
 
-As tarefas \textit{comando\_navegacao} e \textit{controle\_navegacao} foram implementadas em processos diferentes. A troca de informações entre eles é feita por meio da Memória Compartilhada, implementada na própria main. A Memória Compartilhada foi implementad apor meio da Biblioteca Boost, que cria um FileDescriptor para troca de informações. Essa abordagem adaptada foi necessária para haver compatibilidade com o sistema MacOS. Porém, a utilização se mantém da mesma forma. Já a utilização do signal foi utilizado entre para comunicar a presença de uma falha no túnel. Em \textit{reconstrucao\_teto}, ao identificar uma variação acima da esperada, o signal \texttt{SIGUSR1} é acionado. A função \textit{signal\_handler} trata esse signal, desacelerando o carrinho e acionando a câmera. 
+As tarefas \textit{comando\_navegacao} e \textit{controle\_navegacao} operam em processos distintos, e a troca de informações entre elas ocorre via Memória Compartilhada, instanciada no programa principal (\textit{main}). Para garantir a compatibilidade com o sistema operacional macOS, essa memória foi estruturada utilizando a biblioteca Boost, baseando-se na criação de um \textit{File Descriptor}. Apesar do requisito se referir a apenas a tarefas \textit{controle\_navegacao} e \textit{comando\_navegacao}, é necessário que todas as tarefas inetrajam com a Memória Compartilhada, devido à aletração dos estados, como o modo automático, o modo remoto e etc.
+
+Por fim, a comunicação por \textit{signals} foi empregada para notificar a detecção de falhas no túnel. Na tarefa \textit{reconstrucao\_teto}, caso seja identificada uma variação estrutural acima do esperado, o sinal \texttt{SIGUSR1} é emitido, conforme ilustrado na Figura \ref{fig:com_signal}. Uma rotina de tratamento (\textit{signal\_handler}) intercepta esse sinal e atua imediatamente no sistema, desacelerando o veículo e ativando a câmera de inspeção.
+
+Para o Broker foi criada uma %EXPLICAÇÃO BROKER
+
+\begin{figure}[ht]
+  \includegraphics[width=1\linewidth]{imagens/cod_signal.png}
+  \caption{Trecho de código com a chamada do signal.}\label
+  {fig:com_signal}
+\end{figure}
+
+\subsection{Interfaces Gráficas}
+
+Para criar a interface gráfica, foi utilizada a biblioteca pygame (da linguagem Python), devido à sua facilidade de implementação
+
+\begin{figure}[ht]
+  \includegraphics[width=1\linewidth]{imagens/int_simulacao.png}
+  \caption{Interface da simulação.}\label
+  {fig:int_sim}
+\end{figure}
+
+\begin{figure}[ht]
+  \includegraphics[width=1\linewidth]{imagens/int_operacao.png}
+  \caption{Interface da operação remota.}\label
+  {fig:int_opr}
+\end{figure}
+
+\subsection{Dados}
+
+O armazenamento dos dados coletados está sendo feita por meio de arquivos, devido também à simplicidade de implementação. A cada ciclo ele coleta os dados armazenados na Memória Compartilhada e salva em csv, como relatado na figura \ref{fig:dados}.
+
+\begin{figure}[ht]
+  \includegraphics[width=1\linewidth]{imagens/dados_coletados.png}
+  \caption{Log de dados do sistema.}\label
+  {fig:dados}
+\end{figure}
+
+
 
 \section{Resultados de Testes Preliminares Realizados}
 
