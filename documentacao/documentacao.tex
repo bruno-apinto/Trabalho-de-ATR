@@ -9,6 +9,8 @@
 \usepackage{float}
 \usepackage{booktabs}
 \usepackage{makecell}
+\usepackage{url}
+\usepackage{microtype}
 
 \begin{document}
 
@@ -111,7 +113,41 @@ As tarefas \textit{comando\_navegacao} e \textit{controle\_navegacao} operam em 
 
 Por fim, a comunicação por \textit{signals} foi empregada para notificar a detecção de falhas no túnel. Na tarefa \textit{reconstrucao\_teto}, caso seja identificada uma variação estrutural acima do esperado, o sinal \texttt{SIGUSR1} é emitido, conforme ilustrado na Figura \ref{fig:com_signal}. Uma rotina de tratamento (\textit{signal\_handler}) intercepta esse sinal e atua imediatamente no sistema, desacelerando o veículo e ativando a câmera de inspeção.
 
-Para o Broker foi criada uma %EXPLICAÇÃO BROKER
+\begin{sloppypar}
+Para o \textit{broker}, foi utilizado o Mosquitto, rodando localmente no endereço \url{tcp://localhost:1883}. A comunicação foi estruturada em dois clientes distintos: \texttt{robot\_publisher}, responsável por publicar os dados do robô à interface remota, e \texttt{robot\_subscriber}, responsável por receber comandos enviados pela interface remota.
+\end{sloppypar}
+
+Os tópicos de publicação (\textit{Robot $\rightarrow$ Interface Remota}) são:
+
+\begin{itemize}
+    \item \texttt{robot/sensors/lidar} — leitura atual do sensor LiDAR;
+    \item \texttt{robot/sensors/encoder} — estado do encoder de distância;
+    \item \texttt{robot/status/inspection} — status da inspeção por câmera;
+    \item \texttt{robot/status/navigation} — status do modo de navegação;
+    \item \texttt{robot/data/tunnel\_profile} — perfil acumulado do teto do túnel;
+    \item \texttt{robot/data/velocity} — velocidade atual do robô;
+    \item \texttt{robot/data/confidence} — nível de confiança da leitura atual.
+\end{itemize}
+
+Os tópicos de subscrição (\textit{Interface Remota $\rightarrow$ Robot}) são:
+
+\begin{itemize}
+    \item \texttt{robot/commands/navigation} — comandos de movimentação (frente, ré, parar);
+    \item \texttt{robot/commands/mode} — alternância entre modo automático e manual;
+    \item \texttt{robot/commands/velocity} — ajuste direto do \textit{setpoint} de velocidade;
+    \item \texttt{robot/commands/camera} — ligar ou desligar a câmera de inspeção;
+    \item \texttt{robot/commands/threshold} — ajuste do limiar de detecção de anomalia.
+\end{itemize}
+
+A qualidade de serviço (QoS) foi definida por criticidade: dados de sensores e comandos utilizam QoS~1 (\textit{at least once}), garantindo entrega sem duplicação excessiva; dados de status utilizam QoS~0 (\textit{at most once}), priorizando baixa latência.
+
+\begin{sloppypar}
+O MQTT atua como ponte entre o núcleo C++ de tempo real e a interface remota em Python. O \texttt{robot\_publisher} lê periodicamente os dados da Memória Compartilhada e os publica no broker; o \texttt{robot\_subscriber}, por sua vez, recebe os comandos enviados pela interface remota e os escreve de volta na Memória Compartilhada, onde serão consumidos pelas tarefas de controle na próxima iteração. Dessa forma, o MQTT não interfere diretamente na lógica de tempo real — ele opera como uma camada de transporte assíncrona, desacoplando o ritmo da interface remota do ritmo das tarefas periódicas do sistema.
+\end{sloppypar}
+
+\begin{sloppypar}
+A frequência de publicação de cada tópico é determinada pela tarefa que produz os dados na Memória Compartilhada. Os tópicos \path{robot/sensors/lidar}, \path{robot/sensors/encoder}, \path{robot/data/velocity} e \path{robot/data/confidence} são publicados a cada 20~ms, cadência da tarefa \textit{distancia\_percorrida}. Já \path{robot/data/tunnel\_profile}, \path{robot/status/navigation} e \path{robot/status/inspection} são atualizados a cada 80~ms, alinhados com o período das tarefas \textit{reconstrucao\_teto} e \textit{controle\_navegacao}. Essa distinção evita que tópicos de menor variação temporal sobrecarreguem o broker com publicações desnecessárias.
+\end{sloppypar}
 
 \begin{figure}[ht]
   \includegraphics[width=1\linewidth]{imagens/cod_signal.png}
@@ -237,6 +273,50 @@ De forma geral, os testes preliminares indicaram que a implementação atual ate
 Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte.
 
 Todos os prints e testes realizados encontram-se no apêndice desse relatório.
+
+\section{Testes Unitários}
+
+Para validar o comportamento isolado de cada módulo do sistema, foram desenvolvidos testes unitários em duas frentes: uma suíte em C++ cobrindo a lógica embarcada do núcleo de tempo real, e uma suíte em Python cobrindo a simulação física e os algoritmos de processamento de dados. Os testes são executados via \texttt{make test}, que compila e roda ambas as suítes sequencialmente.
+
+\subsection{Testes em C++}
+
+Os testes em C++ foram implementados no arquivo \texttt{src/test\_sistema.cpp}, utilizando um \textit{framework} minimalista próprio — uma função \texttt{check(condição, nome)} que contabiliza aprovações e falhas e retorna código de saída 1 caso algum teste falhe. Foram implementados 35 testes distribuídos em 7 grupos:
+
+\begin{itemize}
+    \item \textbf{Encoder}: verifica a detecção de transições de borda (0$\rightarrow$1 e 1$\rightarrow$0), a ausência de incremento em estado repetido e o acúmulo correto de 10 transições consecutivas;
+
+    \item \textbf{Filtro de média móvel}: valida o retorno do valor puro na primeira amostra (janela incompleta), o cálculo da média de duas amostras distintas e o comportamento da janela deslizante ao descartar amostras antigas;
+
+    \item \textbf{Baseline}: confirma o acúmulo de exatamente 15 amostras válidas, a rejeição de leituras abaixo de 100 durante a fase de inicialização e a imutabilidade do baseline após sua fixação;
+
+    \item \textbf{Detecção de anomalia}: testa leituras normais, buracos (teto mais distante), saliências (teto mais próximo), valores exatamente no limiar e a reconfiguração dinâmica do limiar de variação severa;
+
+    \item \textbf{Confiança}: verifica a inicialização em 10\% na primeira medição, o crescimento proporcional com medições sucessivas na mesma zona, o teto em 100\% e o reinício da contagem ao mudar de zona;
+
+    \item \textbf{Modo de navegação}: valida a ativação e o reset dos flags \texttt{c\_automatico} e \texttt{c\_man}, e confirma que o modo manual tem precedência quando ambos os comandos chegam simultaneamente;
+
+    \item \textbf{Clamp do PID}: verifica o corte em $+100$ e $-100$, a preservação de valores dentro dos limites e o tratamento correto dos valores exatamente nos extremos.
+\end{itemize}
+
+\subsection{Testes em Python}
+
+Os testes em Python foram implementados no arquivo \texttt{src/test\_sistema.py}, com estrutura equivalente ao \textit{framework} C++ — mesma função \texttt{check} e mesmo código de saída. Foram implementados 27 testes distribuídos em 6 grupos:
+
+\begin{sloppypar}
+\begin{itemize}
+    \item \textbf{Pool determinístico de anomalias}: confirma que a mesma semente (\texttt{random.seed(42)}) gera sequências idênticas nas duas interfaces, que os espaçamentos estão no intervalo $[200, 700]$~px, que os tipos são válidos (\textit{buraco} ou \textit{protuberância}) e que sementes diferentes produzem sequências distintas;
+
+    \item \textbf{Encoder}: verifica que 500 pixels geram exatamente 5 transições e que os estados alternam corretamente a cada 100 pixels;
+
+    \item \textbf{Ruído do LiDAR}: valida que a média de 2000 amostras com ruído gaussiano ($\sigma = 2$) está próxima do valor real (erro $< 0{,}3$), que o desvio padrão calculado converge para 2,0 e que nenhuma amostra é negativa devido ao \mbox{\texttt{max(0, ...)}};
+
+    \item \textbf{Convergência de velocidade}: testa que a velocidade converge ao alvo em menos de 10 quadros ($\approx 333$~ms) tanto na aceleração (0 $\rightarrow$ 200~px/s) quanto na desaceleração (200 $\rightarrow$ 80~px/s), com fator de convergência 15,0 a 30~fps;
+
+    \item \textbf{Confiança online}: replica os testes C++ no contexto da simulação Python, incluindo a tolerância de 1~m para manutenção de zona;
+
+    \item \textbf{Baseline e detecção de anomalia}: verifica o acúmulo de 15 amostras, o cálculo correto do baseline, a não detecção de leituras normais e a detecção correta de buracos e saliências com limiar configurável.
+\end{itemize}
+\end{sloppypar}
 
 \section{Análise de Tempo de Resposta}
 
