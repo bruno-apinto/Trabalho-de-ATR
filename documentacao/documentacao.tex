@@ -300,7 +300,7 @@ Os testes em C++ foram implementados no arquivo \texttt{src/test\_sistema.cpp}, 
 
 \subsection{Testes em Python}
 
-Os testes em Python foram implementados no arquivo \texttt{src/test\_sistema.py}, com estrutura equivalente ao \textit{framework} C++ — mesma função \texttt{check} e mesmo código de saída. Foram implementados 27 testes distribuídos em 6 grupos:
+Os testes em Python foram implementados no arquivo \texttt{src/test\_sistema.py}, com estrutura equivalente ao \textit{framework} C++ - mesma função \texttt{check} e mesmo código de saída. Foram implementados 27 testes distribuídos em 6 grupos:
 
 \begin{sloppypar}
 \begin{itemize}
@@ -355,15 +355,21 @@ O vídeo a seguir apresenta o funcionamento básico do sistema de inspeção de 
 
 \section{Conclusão}
 
-Na primeira etapa do trabalho foi desenvolvida a arquitetura inicial do sistema de inspeção automática de túneis, contemplando a implementação das principais tarefas concorrentes responsáveis pela navegação, reconstrução do teto, coleta de dados e inspeção por câmera. O sistema foi estruturado utilizando processos, múltiplas threads e mecanismos de comunicação e sincronização em \texttt{C++}, com foco na aplicação dos conceitos estudados na disciplina de Automação em Tempo Real.
+O presente trabalho alcançou seu propósito ao aplicar com êxito os conceitos e ferramentas de Sistemas de Tempo Real. Foi possível estabelecer a sincronização adequada entre as tarefas, emulando o comportamento de um sistema embarcado sob operação remota. Durante o desenvolvimento prático, observaram-se alguns desafios arquiteturais; em especial, a exigência de certas implementações que, embora possuam valor didático, reduziram a eficiência do código. Diante disso, elencam-se os seguintes pontos de melhoria para alterações futuras:
 
-A comunicação entre processos foi realizada por meio de memória compartilhada, enquanto a troca de dados entre tarefas concorrentes foi organizada utilizando buffers compartilhados protegidos por \texttt{mutexes} e variáveis de condição. Para o \texttt{BUFFER\_NAVEGACAO}, foi implementada uma lógica de leitores e escritores utilizando meta-locking, permitindo múltiplas leituras simultâneas e garantindo exclusão mútua durante operações de escrita. Já o \texttt{BUFFER\_NIVEL} foi estruturado no modelo produtor-consumidor, controlando corretamente situações de buffer cheio e buffer vazio.
+\begin{itemize}
+    \item \textbf{Gerenciamento de filas:} É necessário estabelecer uma periodização mais rigorosa e estruturar adequadamente a formação de filas para otimizar o acesso concorrente aos \textit{buffers}.
+    
+    \item \textbf{Comunicação por \textit{signals}:} A comunicação interprocessos (IPC) baseada exclusivamente em Memória Compartilhada é uma solução mais adequada para todo o sistema. Essa abordagem aproveitaria melhor os recursos da biblioteca Boost e eliminaria a necessidade de funções intermediárias para tratamento de sinais (como o \textit{signal\_handler}).
+    
+    \item \textbf{Arquitetura do \textit{broker}:} A implementação de um \textit{broker} em ambas as extremidades mostrou-se superdimensionada para uma rede contendo apenas duas máquinas operantes. Uma abordagem de comunicação ponto a ponto mais direta na interface simplificaria a topologia.
+    
+    \item \textbf{Persistência de dados:} Recomenda-se a futura integração de um banco de dados para garantir maior robustez e escalabilidade no armazenamento do histórico. Embora o modelo de persistência atual cumpra seu papel de forma satisfatória, ele apresenta limitações práticas para a manipulação analítica das informações.
+    
+    \item \textbf{Escalonamento por Executivo Cíclico:} Com os tempos de execução de pior caso já devidamente mapeados, a transição para uma arquitetura de escalonamento baseada em Executivo Cíclico aumentaria significativamente a previsibilidade, a eficiência temporal e o determinismo do sistema.
+\end{itemize}
 
-Além da implementação da arquitetura básica do sistema, foram realizados diversos testes preliminares para validar o comportamento concorrente da aplicação. Os testes demonstraram que as tarefas conseguem trocar informações corretamente, que os mecanismos de sincronização evitam condições de corrida e que os eventos de acionamento da câmera são tratados adequadamente. Também foi validada a finalização controlada das threads e o correto funcionamento dos buffers compartilhados em diferentes cenários de execução.
-
-Os resultados obtidos até o momento indicam que a base estrutural do sistema está funcionando de forma coerente e atende aos objetivos definidos para a primeira etapa do projeto. Apesar disso, parte das funcionalidades ainda utiliza dados simulados e simplificações temporárias, principalmente relacionadas à física da navegação, ao processamento da câmera e à interface de operação remota.
-
-Como próximos passos, pretende-se concluir a integração completa da simulação física do robô e do túnel, implementar a comunicação remota via protocolo MQTT e desenvolver as interfaces gráficas de simulação e operação remota. Além disso, serão incorporados testes mais avançados de desempenho, tempo de resposta e escalonabilidade das tarefas, avaliando o comportamento do sistema sob diferentes cargas de processamento e frequências de execução. Também serão realizados testes adicionais de robustez e sincronização para validar o funcionamento do sistema completo em cenários mais próximos de uma aplicação real.
+Em suma, a execução do projeto apresentou resultados consistentes, considerando os requisitos críticos do sistema. Entende-se que o principal obstáculo ao longo do trabalho foi a sequência de desenvolvimento, pois a mudança da etapa 1 para a etapa 2 causou bastante retrabalho. Esta dificuldade foi agravada pela incerteza ao implementar uma biblioteca muito pouco explorada em sala de aula.
 
 
 \section{Apêndice}
