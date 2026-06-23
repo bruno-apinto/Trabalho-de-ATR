@@ -7,6 +7,8 @@
 \usepackage{minted}
 \usepackage{setspace}
 \usepackage{float}
+\usepackage{booktabs}
+\usepackage{makecell}
 
 \begin{document}
 
@@ -191,6 +193,33 @@ De forma geral, os testes preliminares indicaram que a implementação atual ate
 Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte.
 
 Todos os prints e testes realizados encontram-se no apêndice desse relatório.
+
+\section{Análise de Tempo de Resposta}
+
+Para a Análise em Tempo de Resposta foi necessário cronometrar as tarefas separadamente. Para isso, foi coletado o tempo máximo de execução de cada tarefa, num tempo de execução do código de 2 minutos. Assim, obteve-se os valores demonstrados na tabela \ref{tab:tempo_tarefas}. Dessa forma, é possível calcular o fator de utilização (equação \ref{eq:fator_util}), obtendo um valor de 1,58\% -- bem mais abaixo que o valor máximo teórico de 82,8\%.
+
+\begin{equation}
+    \centering
+    \label{eq:fator_util}
+    U = \sum_{i=0}^{n} \frac{C_i}{T_i} = 1,58\%
+\end{equation}
+
+\begin{table}[]
+\centering
+\label{tab:tempo_tarefas}
+\begin{tabular}{l c c} 
+\toprule
+\textbf{Tarefa} & \makecell{\textbf{Tempo máximo de} \\ \textbf{execução ($\mu$s)}} & \makecell{\textbf{Período} \\ \textbf{(ms)}} \\ 
+\midrule
+controle\_navegacao    & 4    & 80  \\
+distancia\_percorrida  & 67   & 20  \\
+reconstrucao\_teto     & 53   & 80  \\
+coletor\_dados         & 346  & 100 \\
+inspecao\_camera       & 8277 & --  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 
 \section{Conclusão}
 
