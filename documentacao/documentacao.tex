@@ -41,7 +41,7 @@
 
     \vspace{0.8cm}
 
-    {\Large Entrega 1: Definição da Arquitetura}
+    {\Large Entrega 2: Relatório Final}
 
     \vfill
 
@@ -86,12 +86,11 @@ Por fim, esta etapa do trabalho estabelece a base arquitetural necessária para 
 A proposta de arquitetura apresentada na primeira etapa do trabalho foi totalmente remodelada, pois não se adequava aos requisitos de utilização da biblioteca Boost. Além disso, identificou-se o acúmulo de tarefas na fila entre as \textit{threads}. Na abordagem inicial, o travamento das tarefas era frequente, dado que o período da tarefa \textit{distancia\_percorrida()} é de $20$ ms, enquanto o da tarefa \textit{reconstrucao\_teto()} é de $100$ ms. Consequentemente, a taxa de escrita no \texttt{BUFFER\_NAVEGACAO} é significativamente superior à sua taxa de leitura. Assim, ao utilizar a instrução \textit{wait()} em \textit{distancia\_percorrida()}, o sistema entrava em um \textit{deadlock}. Para evitar esse cenário, quando uma tarefa agendada não está apta para execução, ela é finalizada forçadamente, sendo contabilizada como uma perda de prazo (\textit{miss}).
 
 Ademais, implementou-se o uso de \textit{strands} para otimizar o aproveitamento da biblioteca Boost e evitar condições de corrida no acesso aos \textit{buffers}. A classe \texttt{io\_service::strand} atua como um serializador de contexto de I/O, gerindo o agendamento de execuções. Por meio da função \texttt{boost::post}, é possível enfileirar novas tarefas de forma segura. Isso garante que as tarefas sejam executadas sequencialmente na \textit{strand}, eliminando a preempção concorrente e as condições de corrida sem a necessidade de bloqueios explícitos.
-   
+
 \begin{figure}[ht]
   \includegraphics[width=1\linewidth]{imagens/arq_fila.png}
   \caption{Proposta de arquitetura para o trabalho prático. É possível identificar a relação dos bufferes com as funções.}\label{fig:arq_fila}
 \end{figure}
-
 
 \subsection{Periodização}
 
@@ -109,13 +108,28 @@ Ademais, como o período das strands são conflitantes ($T_{distancia\_percorrid
 
 Conforme exigido pelo escopo do trabalho, o projeto contempla três requisitos principais: o uso de comunicação interprocessos (IPC), o envio de sinais (\textit{signals}) entre duas tarefas para o acionamento da câmera e a integração de um \textit{broker} para a comunicação com as interfaces.
 
-As tarefas \textit{comando\_navegacao} e \textit{controle\_navegacao} operam em processos distintos, e a troca de informações entre elas ocorre via Memória Compartilhada, instanciada no programa principal (\textit{main}). Para garantir a compatibilidade com o sistema operacional macOS, essa memória foi estruturada utilizando a biblioteca Boost, baseando-se na criação de um \textit{File Descriptor}. Apesar do requisito se referir a apenas a tarefas \textit{controle\_navegacao} e \textit{comando\_navegacao}, é necessário que todas as tarefas inetrajam com a Memória Compartilhada, devido à aletração dos estados, como o modo automático, o modo remoto e etc.
+\subsubsection{Implementação da Memória Compartilhada}
 
-Por fim, a comunicação por \textit{signals} foi empregada para notificar a detecção de falhas no túnel. Na tarefa \textit{reconstrucao\_teto}, caso seja identificada uma variação estrutural acima do esperado, o sinal \texttt{SIGUSR1} é emitido, conforme ilustrado na Figura \ref{fig:com_signal}. Uma rotina de tratamento (\textit{signal\_handler}) intercepta esse sinal e atua imediatamente no sistema, desacelerando o veículo e ativando a câmera de inspeção.
+Após a criação do arquivo de memória, a classe \texttt{file\_mapping} é utilizada para associá-lo ao processo, enquanto a classe \texttt{mapped\_region} realiza o mapeamento efetivo do arquivo no espaço de endereçamento da aplicação. O endereço retornado por essa região é convertido para um ponteiro da estrutura \texttt{MemoriaCompartilhada}, permitindo que os campos sejam acessados diretamente pelas diferentes tarefas.
 
-\begin{sloppypar}
+A estrutura compartilhada reúne variáveis relacionadas aos sensores, atuadores, estados e comandos do robô. Entre elas, encontram-se o estado do encoder, a leitura do sensor LiDAR, o comando de acionamento da câmera, o valor de aceleração, o estado de inspeção, o modo de operação e o \textit{setpoint} de velocidade. Dessa forma, a estrutura representa a interface comum entre a simulação, o controle de navegação, a operação remota e os módulos de comunicação.
+
+A tarefa \textit{comando\_navegacao} e as tarefas executadas no processo principal operam em processos distintos. Após a criação do processo por meio da função \texttt{fork()}, o processo filho abre novamente o mesmo arquivo mapeado e obtém acesso à estrutura compartilhada. Assim, uma alteração realizada por um processo pode ser observada pelos demais processos que possuem a mesma região de memória mapeada.
+
+Esse mecanismo é utilizado, por exemplo, para que o processo responsável pelo comando de navegação atualize o modo de operação e o \textit{setpoint} de velocidade, enquanto a tarefa de controle consulta esses valores para calcular a atuação do robô. De maneira semelhante, a interface de simulação escreve os valores correspondentes ao encoder e ao LiDAR, enquanto o núcleo em C++ utiliza essas informações no cálculo da distância e na reconstrução do teto.
+
+A interface gráfica desenvolvida em Python também acessa o arquivo de Memória Compartilhada. Para isso, foi criada em Python uma estrutura equivalente à estrutura utilizada no código C++, mantendo a mesma ordem e os mesmos tipos básicos dos campos. O arquivo é aberto em modo de leitura e escrita e mapeado por meio do módulo \texttt{mmap}. Em seguida, o módulo \texttt{ctypes} permite interpretar os bytes da região mapeada como uma estrutura de dados. A equivalência entre as estruturas declaradas em C++ e Python é necessária para garantir que os dois programas interpretem corretamente as mesmas posições da memória. 
+
+Além da interface de simulação, os clientes MQTT também utilizam os valores armazenados na Memória Compartilhada. O cliente \texttt{robot\_publisher} realiza a leitura periódica dos sensores e estados do robô e publica essas informações no \textit{broker}. Por sua vez, o cliente \texttt{robot\_subscriber} recebe os comandos enviados pela interface de operação remota e atualiza os campos correspondentes na Memória Compartilhada.
+
+Como diferentes tarefas podem acessar os mestexttt{mutex}, garantindo que o publicador não leia a estrutura durante uma atualização realizada pelo subscritor. Nas demais partes do sistema, a organização das tarefas em processos, \textit{strands} de um \texttt{mutex}, garantindo que o publicador não leia a estrutura durante uma atualização realizada pelo subscritor. Nas demais partes do sistema, a organização das tarefas em processos, \textit{strands} e regiões críticas impede a ocorrência de condições de corrida.
+
+\subsubsection{Signals}
+
+A comunicação por \textit{signals} foi empregada para notificar a detecção de falhas no túnel. Na tarefa \textit{reconstrucao\_teto}, caso seja identificada uma variação estrutural acima do esperado, o sinal \texttt{SIGUSR1} é emitido, conforme ilustrado na Figura \ref{fig:com_signal}. Uma rotina de tratamento (\textit{signal\_handler}) intercepta esse sinal e atua imediatamente no sistema, desacelerando o veículo e ativando a câmera de inspeção.
+
+\subsubsection{MQTT}
 Para o \textit{broker}, foi utilizado o Mosquitto, rodando localmente no endereço \url{tcp://localhost:1883}. A comunicação foi estruturada em dois clientes distintos: \texttt{robot\_publisher}, responsável por publicar os dados do robô à interface remota, e \texttt{robot\_subscriber}, responsável por receber comandos enviados pela interface remota.
-\end{sloppypar}
 
 Os tópicos de publicação (\textit{Robot $\rightarrow$ Interface Remota}) são:
 
@@ -141,13 +155,9 @@ Os tópicos de subscrição (\textit{Interface Remota $\rightarrow$ Robot}) são
 
 A qualidade de serviço (QoS) foi definida por criticidade: dados de sensores e comandos utilizam QoS~1 (\textit{at least once}), garantindo entrega sem duplicação excessiva; dados de status utilizam QoS~0 (\textit{at most once}), priorizando baixa latência.
 
-\begin{sloppypar}
 O MQTT atua como ponte entre o núcleo C++ de tempo real e a interface remota em Python. O \texttt{robot\_publisher} lê periodicamente os dados da Memória Compartilhada e os publica no broker; o \texttt{robot\_subscriber}, por sua vez, recebe os comandos enviados pela interface remota e os escreve de volta na Memória Compartilhada, onde serão consumidos pelas tarefas de controle na próxima iteração. Dessa forma, o MQTT não interfere diretamente na lógica de tempo real — ele opera como uma camada de transporte assíncrona, desacoplando o ritmo da interface remota do ritmo das tarefas periódicas do sistema.
-\end{sloppypar}
 
-\begin{sloppypar}
 A frequência de publicação de cada tópico é determinada pela tarefa que produz os dados na Memória Compartilhada. Os tópicos \path{robot/sensors/lidar}, \path{robot/sensors/encoder}, \path{robot/data/velocity} e \path{robot/data/confidence} são publicados a cada 20~ms, cadência da tarefa \textit{distancia\_percorrida}. Já \path{robot/data/tunnel\_profile}, \path{robot/status/navigation} e \path{robot/status/inspection} são atualizados a cada 80~ms, alinhados com o período das tarefas \textit{reconstrucao\_teto} e \textit{controle\_navegacao}. Essa distinção evita que tópicos de menor variação temporal sobrecarreguem o broker com publicações desnecessárias.
-\end{sloppypar}
 
 \begin{figure}[ht]
   \includegraphics[width=1\linewidth]{imagens/cod_signal.png}
@@ -186,93 +196,6 @@ O armazenamento dos dados coletados está sendo feita por meio de arquivos, devi
   \caption{Log de dados do sistema.}\label
   {fig:dados}
 \end{figure}
-
-
-
-\section{Resultados de Testes Preliminares Realizados}
-
-Durante a fase de desenvolvimento da arquitetura do sistema, foram realizados testes preliminares para validar a implementação dos buffers compartilhados e a sincronização entre as tarefas que escrevem e leem nos buffers. Esses testes foram fundamentais para garantir que o sistema se comporta corretamente em diferentes condições do sistema, evitando, por exemplo, condições de corrida, inanição e garantindo a integridade dos dados e a execução e  finalização corretas de todas as partes já implementadas do código. 
-
-Os testes foram conduzidos com dados simulados, uma vez que o restante do código ainda será realizado na etapa posterior do projeto. Foram feitos testes de execução, de diferentes quantidades de falhas encontradas no caminho percorrido, casos onde o buffer estava vazio, garantindo que as tarefas consumidoras aguardavam corretamente até que os dados estivessem disponíveis, além de casos de bloqueio de leitores e escritores do buffer de navegação, garantindo a boa execução do meta-locking implementado, em que mais de uma thread pode ler o buffer, porém somente uma thread pode acessá-lo em caso de escrita. 
-
-Os resultados desses testes preliminares foram positivos, demonstrando que a implementação dos buffers compartilhados e a sincronização entre as tarefas estão funcionando conforme o esperado. Esses resultados fornecem uma base sólida para a próxima etapa do desenvolvimento do sistema, onde será finalizada a implementação do sistema.
-
-\subsection{Compilação e Execução Inicial}
-
-Inicialmente, foi validado o processo de compilação do programa por meio do arquivo \texttt{Makefile}, que foi comprovada pela utilização de logs que imprimem mensagens indicando tarefas que foram realizadas. Durante a execução inicial, verificou-se a criação do processo associado ao comando de navegação, a escrita de comandos em memória compartilhada e a leitura desses comandos pelo processo principal. Foram observados valores coerentes para o comando de operação automática e para o setpoint de velocidade, indicando que a estrutura inicial de compartilhamento de informações foi inicializada corretamente.
-
-Em seguida, foram criadas as threads correspondentes às principais tarefas do sistema: cálculo de distância percorrida, inspeção por câmera, coletor de dados, reconstrução do teto e controle de navegação. A criação das threads foi acompanhada por mensagens de log, permitindo verificar a inicialização e execução das tarefas.
-
-Após isso, foram impressos diversos logs da execução, que serão melhor explorados nos próximos testes.
-
-\subsection{Teste sem Detecção de Falhas}
-
-O primeiro teste funcional teve como objetivo verificar o comportamento do sistema sem que houvesse detecção de falhas na superfície do teto. Nesse caso, a tarefa de reconstrução do teto produziu números simulados de distância (que futuramente virão do LIDAR) para o \texttt{BUFFER\_NIVEL}, enquanto o coletor de dados realizou a leitura dessas informações.
-
-Durante a execução, observou-se que não houve acionamento indevido da câmera nem redução de velocidade associada à inspeção, o que indica que a lógica de falha permaneceu inativa durante o teste. Ao final da execução, todas as threads foram finalizadas corretamente e os buffers finais foram impressos, demonstrando que a ausência de falhas não provocou bloqueio permanente no sistema.
-
-\subsection{Teste com uma Falha Detectada}
-
-Esse teste teve como objetivo validar o comportamento do sistema diante da detecção de uma única falha na superfície do teto. Para isso, a lógica de detecção da tarefa de reconstrução foi configurada para gerar um evento de falha em apenas uma iteração durante toda a execução.
-
-Durante o teste foi registrada a detecção de falha em um único instante da execução, seguida do acionamento lógico da câmera e da redução do setpoint de velocidade. Após o tratamento do evento, a execução prosseguiu normalmente.
-
-Ao final, todas as threads foram encerradas sem travamentos, indicando que o sistema foi capaz de tratar uma falha isolada sem comprometer a execução das demais tarefas.
-
-Além disso, foi possível verificar a tarefa de inspeção por câmera a partir da geração de eventos de falha pela tarefa de reconstrução do teto. Verificou-se que a câmera não executava atividades enquanto não havia falhas detectadas. Quando uma falha foi simulada, a reconstrução incrementou o contador de eventos de câmera, atualizou os estados compartilhados e notificou a variável de condição associada à inspeção.
-
-Durante os testes, foram registradas mensagens indicando o início e a finalização da inspeção por câmera. Esse comportamento confirmou que a thread da câmera foi corretamente desbloqueada diante de eventos de falha e que retornou ao estado inativo após o processamento.
-
-\subsection{Teste com Múltiplas Falhas}
-
-Outro teste realizado foi o de múltiplas falhas, no qual a tarefa de reconstrução do teto foi configurada para simular a detecção de falha em todas as iterações. O objetivo desse teste foi verificar se o sistema seria capaz de lidar com acionamentos sucessivos da lógica de inspeção.
-
-Durante a execução, foram registradas múltiplas mensagens de falha detectada, cada uma associada ao acionamento lógico da câmera e à redução do setpoint de velocidade. Mesmo com sucessivos eventos de inspeção, o sistema continuou realizando a escrita e leitura dos dados no buffer de nível sem apresentar erros.
-
-Esse teste permitiu validar o funcionamento da câmera sem perdas de eventos quando múltiplas falhas são detectadas em sequência. Ao final da execução, a thread de reconstrução foi finalizada, a thread de câmera encerrou corretamente e todas as demais tarefas concluíram sua execução. Dessa forma, o teste indicou que o sistema é capaz de tratar múltiplos eventos de falha sem bloqueio permanente.
-
-
-\subsection{Teste de Buffer de Nível Vazio}
-
-O teste de buffer de nível vazio teve como objetivo verificar se uma tarefa consumidora permanece bloqueada quando não há dados disponíveis para leitura. Esse comportamento foi observado na tarefa coletora de dados, responsável por consumir informações do \texttt{BUFFER\_NIVEL}.
-
-Durante a execução, o coletor registrou mensagens indicando que o buffer estava vazio e permaneceu aguardando a chegada de novos dados. Após a tarefa de reconstrução do teto escrever um novo dado e notificar a variável de condição correspondente, o coletor retomou a execução e realizou a leitura do dado disponível.
-
-Esse comportamento demonstra que o consumidor não realiza leituras inválidas quando o buffer está vazio. Em vez disso, a thread permanece bloqueada, sem espera ativa, até que o produtor disponibilize uma nova amostra. Assim, o teste validou o tratamento correto da condição de buffer vazio.
-
-\subsection{Teste de Buffer de Nível Cheio}
-
-O teste de buffer de nível cheio foi realizado com o objetivo de verificar se a tarefa produtora é corretamente bloqueada quando o buffer atinge sua capacidade máxima. Para isso, a tarefa de reconstrução do teto foi configurada para produzir dados em uma taxa superior à taxa de consumo do coletor de dados.
-
-Durante a execução, o \texttt{BUFFER\_NIVEL} foi sendo ocupado a cada iteração até atingir sua capacidade máxima. Nesse momento, a tarefa de reconstrução registrou a condição de buffer cheio e permaneceu bloqueada aguardando a liberação de espaço.
-
-Quando o coletor de dados consumiu as amostras (como a execução é muito rápida, na figura todas foram consumidas antes da sinalização), a tarefa de reconstrução foi notificada e retomou a escrita no buffer. Esse comportamento confirma que o produtor não sobrescreve dados quando o buffer está cheio, permanecendo em espera até que o consumidor libere espaço. Assim, a lógica produtor-consumidor implementada para o buffer de nível foi validada.
-
-\subsection{Teste de Bloqueio de Leitores e Escritores}
-
-Foi realizado também um teste específico para o \texttt{BUFFER\_NAVEGACAO}, cujo acesso é controlado por uma lógica de leitores e escritores usando meta-locking. Esse buffer é escrito pela tarefa de cálculo de distância percorrida e lido pelas tarefas de controle de navegação e reconstrução do teto.
-
-Para validar o mecanismo de sincronização, foram introduzidos atrasos artificiais nas regiões críticas de leitura e escrita. Inicialmente, a tarefa de distância percorrida manteve o lock de escrita com o escritor por um intervalo maior, fazendo com que as tarefas leitoras aguardassem a liberação do recurso. Os logs indicaram que tanto a reconstrução do teto quanto o controle de navegação permaneceram bloqueados enquanto havia um escritor ativo.
-
-Em seguida, observou-se também a situação inversa: a tarefa escritora aguardou a liberação do buffer enquanto existiam leitores ativos que foram colocados para dormir propositalmente, levando ao atraso da liberação do lock. Após a finalização das leituras, o escritor retomou a execução e realizou a escrita no buffer.
-
-Esse teste demonstrou que a lógica de meta-locking implementada no \texttt{BUFFER\_NAVEGACAO} impede leituras durante uma escrita ativa e impede escritas enquanto há leitores ativos. Dessa forma, foi validada a exclusão adequada entre leitores e escritores, reduzindo o risco de inconsistências no acesso ao buffer compartilhado.
-
-\subsection{Teste de Finalização das Threads}
-
-Outro aspecto avaliado foi a finalização controlada das threads. Durante os testes iniciais, observou-se que algumas threads poderiam permanecer bloqueadas indefinidamente caso ficassem aguardando eventos que não seriam mais produzidos, causando deadlock. Esse comportamento foi corrigido por meio da inclusão de flags de finalização e notificações adicionais ao término das tarefas produtoras.
-
-Nos testes finais, a função principal conseguiu aguardar a finalização de todas as threads por meio de \texttt{join()}. Foram registradas mensagens indicando a conclusão das threads de distância percorrida, inspeção por câmera, coletor de dados, reconstrução do teto e controle de navegação, seguida da impressão dos valores escritos em cada buffer e da finalização do sistema.
-
-A thread de controle de navegação permaneceu ativa por mais tempo devido a atrasos artificiais inseridos para simular um consumidor mais lento, mas finalizou corretamente ao término de suas iterações. Dessa forma, foi validado que o sistema encerra de maneira controlada, sem a necessidade de interrupção manual, já que todas as tarefas possuem uma condição de término definida.
-
-\subsection{Considerações Finais dos Testes}
-
-De forma geral, os testes preliminares indicaram que a implementação atual atende aos objetivos definidos para a primeira etapa do projeto. Foram validadas a criação das tarefas concorrentes, a comunicação por buffers, a sincronização por mutexes e variáveis de condição, o bloqueio correto em situações de buffer cheio e vazio, o controle de leitores e escritores no buffer de navegação, o acionamento da câmera por evento simulado e a finalização controlada das threads.
-
-Apesar disso, os testes ainda foram realizados com dados simulados e em ambiente controlado. A validação completa do sistema dependerá da etapa seguinte.
-
-Todos os prints e testes realizados encontram-se no apêndice desse relatório.
 
 \section{Testes Unitários}
 
@@ -343,6 +266,89 @@ inspecao\_camera       & 8277 & --  \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Compilação e Execução}
+
+A compilação do sistema é realizada por meio do arquivo \texttt{Makefile} localizado no diretório principal do projeto. Esse arquivo automatiza a compilação dos módulos desenvolvidos em C++, a ligação com as bibliotecas externas utilizadas e a geração do executável final denominado \texttt{programa}.
+
+O projeto utiliza o compilador \texttt{g++} e o padrão C++17. Durante a compilação, também são habilitados os avisos do compilador por meio das opções \texttt{-Wall} e \texttt{-Wextra}, além do suporte à execução concorrente com a opção \texttt{-pthread}.
+
+Os arquivos utilizados na geração do executável são:
+
+\begin{itemize}
+    \item \texttt{main.cpp};
+    \item \texttt{src/sincronizacao.cpp};
+    \item \texttt{src/simulacao.cpp};
+    \item \texttt{src/mqtt\_client.cpp};
+    \item \texttt{src/mqtt\_publisher.cpp};
+    \item \texttt{src/mqtt\_subscriber.cpp};
+    \item \texttt{src/mqtt\_manager.cpp}.
+\end{itemize}
+
+Além do compilador C++, é necessário que estejam instaladas as bibliotecas Boost, Eclipse Paho MQTT C, Eclipse Paho MQTT C++ e \texttt{pthread}. Para a execução das interfaces gráficas e dos testes implementados em Python, também são necessários o Python 3 e a biblioteca Pygame.
+
+O \texttt{Makefile} contém caminhos de inclusão e de ligação utilizados pelo Homebrew no macOS, como \texttt{/opt/homebrew/include} e \texttt{/opt/homebrew/lib}. Também foram incluídos os caminhos \texttt{/usr/local/include} e \texttt{/usr/local/lib}. Dessa forma, as bibliotecas necessárias devem estar instaladas em um desses diretórios ou os respectivos caminhos devem ser ajustados conforme o sistema operacional utilizado.
+
+Inicialmente, deve-se abrir um terminal e acessar o diretório principal do projeto:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+cd Trabalho-de-ATR
+\end{minted}
+
+Para compilar todos os arquivos-fonte e gerar o executável, utiliza-se o comando:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make
+\end{minted}
+
+Durante esse processo, cada arquivo com extensão \texttt{.cpp} é compilado separadamente, gerando os respectivos arquivos-objeto com extensão \texttt{.o}. Em seguida, esses arquivos são ligados às bibliotecas Paho MQTT e \texttt{pthread}, produzindo o executável \texttt{programa}.
+
+Após a compilação, o sistema pode ser iniciado com:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make run
+\end{minted}
+
+Esse comando verifica se o executável está atualizado e, em seguida, executa:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+./programa
+\end{minted}
+
+Para o funcionamento da comunicação remota, o broker Mosquitto deve estar instalado e em execução antes da inicialização do programa. Na configuração utilizada no projeto, o broker é executado localmente na porta padrão 1883.
+
+Os testes unitários em C++ e Python podem ser executados por meio do comando:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make test
+\end{minted}
+
+Inicialmente, esse comando compila o arquivo \texttt{src/test\_sistema.cpp}, gerando o executável \texttt{test\_sistema}. Em seguida, são executados os testes em C++ e, posteriormente, os testes presentes no arquivo \texttt{src/test\_sistema.py} por meio do Python 3.
+
+Para remover o executável, os arquivos-objeto e o executável dos testes, utiliza-se:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make clean
+\end{minted}
+
+Também foi disponibilizado o comando:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make rebuild
+\end{minted}
+
+Esse comando executa inicialmente a limpeza dos arquivos compilados e, em seguida, realiza uma nova compilação completa do projeto. Sua utilização é recomendada após alterações nos arquivos de cabeçalho ou quando for necessário garantir que todos os módulos sejam recompilados.
+
+Assim, uma sequência completa para recompilar, testar e executar o sistema pode ser representada por:
+
+\begin{minted}[fontsize=\small,breaklines,frame=single]{bash}
+make rebuild
+make test
+make run
+\end{minted}
+
+Caso sejam apresentados erros relacionados às bibliotecas Paho MQTT ou Boost, deve-se verificar se elas estão corretamente instaladas e se seus diretórios de inclusão e ligação correspondem aos caminhos definidos no \texttt{Makefile}.
+
 
 
 \section{Vídeo de Demonstração}
